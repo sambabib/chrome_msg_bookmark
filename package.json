@@ -1,0 +1,17 @@
+{
+  "name": "chrome_msg_bookmark",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:e2e": "jest --config jest-puppeteer.config.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "puppeteer": "^24.2.0"
+  }
+}

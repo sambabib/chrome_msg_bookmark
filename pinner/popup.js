@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function deleteMessage(index) {
         chrome.storage.sync.get({ pinnedMessages: [] }, (data) => {
             let messages = data.pinnedMessages;
-            messages.splice(index, 1); // Remove the selected message
+            messages.splice(index, 1);
             chrome.storage.sync.set({ pinnedMessages: messages }, loadMessages);
         });
     }
