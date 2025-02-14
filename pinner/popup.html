@@ -1,21 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pinned Messages</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            width: 300px;
+            padding: 16px;
+            font-family: Arial, sans-serif;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(16px);
+        }
+        button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f8f8f8;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #eee;
+        }
+        .pinned-message {
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .message-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .actions {
+            display: flex;
+            gap: 4px;
+        }
+    </style>
 </head>
-
 <body>
-    <button id="pinMessage">📌 Pin Selected Message</button>
-    <ul id="pinnedMessages"></ul>
-    <button id="clearMessages">🗑 Clear All</button>
-    <div id="footer">
-        <p>Made with ❤️ by <strong>Emmanuel Akala.</strong></p>
+    <div class="header">
+        <div class="toggle-container">
+            <label class="switch">
+                <input type="checkbox" id="enableToggle">
+                <span class="slider"></span>
+            </label>
+            <span>Enable Pinning</span>
+        </div>
     </div>
+    <div id="pinnedMessages"></div>
     <script src="./popup.js"></script>
 </body>
-
 </html>

@@ -7,10 +7,8 @@ require("@testing-library/jest-dom");
 
 describe("ChatGPT Pinner Extension", () => {
     beforeEach(() => {
-        // Reset all mocks
         jest.clearAllMocks();
 
-        // Set up chrome mock
         global.chrome = {
             storage: {
                 sync: {
@@ -24,80 +22,116 @@ describe("ChatGPT Pinner Extension", () => {
             },
             tabs: {
                 query: jest.fn((_, callback) => callback([{ id: 1, url: "https://chat.openai.com" }])),
+                sendMessage: jest.fn()
             },
+            runtime: {
+                sendMessage: jest.fn(),
+                onMessage: {
+                    addListener: jest.fn()
+                }
+            }
         };
 
-        // Set up the DOM
         document.body.innerHTML = `
+            <input type="checkbox" id="enableToggle">
             <button id="pinMessage">Pin Selected Message</button>
             <button id="clearMessages">Clear All</button>
             <ul id="pinnedMessages"></ul>
         `;
 
-        // Reset modules before importing popup.js
         jest.resetModules();
     });
 
     const loadPopupScript = () => {
-        require("../popup.js");
+        require("./popup.js");
         document.dispatchEvent(new Event('DOMContentLoaded'));
     };
 
-    test("should save and display a pinned message", async () => {
+    test("should load initial state correctly", async () => {
         loadPopupScript();
+        
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        expect(chrome.storage.sync.get).toHaveBeenCalledWith(
+            ['enabled', 'pinnedMessages'],
+            expect.any(Function)
+        );
+    });
 
-        const pinButton = screen.getByText("Pin Selected Message");
-        fireEvent.click(pinButton);
+    test("should toggle extension state", async () => {
+        loadPopupScript();
+        
+        const toggle = document.getElementById('enableToggle');
+        fireEvent.change(toggle, { target: { checked: true } });
 
-        // Wait for async operations
         await new Promise(resolve => setTimeout(resolve, 0));
 
-        expect(chrome.tabs.query).toHaveBeenCalledTimes(1);
         expect(chrome.storage.sync.set).toHaveBeenCalledWith(
-            { pinnedMessages: ["Mocked Selected Text"] },
+            { enabled: true },
+            expect.any(Function)
+        );
+        expect(chrome.tabs.query).toHaveBeenCalledWith(
+            { active: true, currentWindow: true },
             expect.any(Function)
         );
     });
 
     test("should retrieve and display pinned messages on load", async () => {
-        // Mock storage with initial messages
-        const mockMessages = ["Saved Message 1", "Saved Message 2"];
+        const mockMessages = [
+            { text: "Saved Message 1", position: 0, timestamp: Date.now() },
+            { text: "Saved Message 2", position: 1, timestamp: Date.now() }
+        ];
+        
         chrome.storage.sync.get = jest.fn((key, callback) => 
             callback({ pinnedMessages: mockMessages })
         );
 
-        // Load popup and wait for async operations
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
 
-        // Check content
         const pinnedMessagesList = document.getElementById("pinnedMessages");
         expect(pinnedMessagesList.textContent).toContain("Saved Message 1");
         expect(pinnedMessagesList.textContent).toContain("Saved Message 2");
     });
 
     test("should delete a pinned message", async () => {
-        const initialMessages = ["Message 1", "Message 2"];
+        const initialMessages = [
+            { text: "Message 1", position: 0, timestamp: Date.now() },
+            { text: "Message 2", position: 1, timestamp: Date.now() }
+        ];
+        
         chrome.storage.sync.get = jest.fn((key, callback) => 
             callback({ pinnedMessages: initialMessages })
         );
-
+    
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
-
-        const deleteButtons = document.querySelectorAll("ul button");
+    
+        const deleteButtons = document.querySelectorAll(".actions button:last-child");
         fireEvent.click(deleteButtons[0]);
-
+    
         await new Promise(resolve => setTimeout(resolve, 0));
-
+    
         expect(chrome.storage.sync.set).toHaveBeenCalledWith(
-            { pinnedMessages: ["Message 2"] },
+            {
+                pinnedMessages: [
+                    {
+                        text: "Message 2",
+                        position: 1,
+                        timestamp: expect.any(Number)
+                    }
+                ]
+            },
             expect.any(Function)
         );
     });
 
     test("should clear all pinned messages", async () => {
-        const initialMessages = ["Message 1", "Message 2"];
+        const initialMessages = [
+            { text: "Message 1", position: 0, timestamp: Date.now() },
+            { text: "Message 2", position: 1, timestamp: Date.now() }
+        ];
+        
         chrome.storage.sync.get = jest.fn((key, callback) => 
             callback({ pinnedMessages: initialMessages })
         );
