@@ -8,7 +8,7 @@
             "storage"
         ],
         "host_permissions": [
-            "https://chat.openai.com/*"
+            "https://chatgpt.com/*"
         ],
         "background": {
             "service_worker": "background.js"

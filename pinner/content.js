@@ -1,92 +1,101 @@
-// Listen for storage changes to keep pins in sync
-chrome.storage.sync.onChanged.addListener((changes) => {
-    if (changes.pinnedMessages) {
-        addPinButtons();
+// content.js
+let enabled = false;
+
+document.addEventListener('keydown', (e) => {
+    if (!enabled) return;
+    
+    if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        pinSelectedText();
     }
 });
 
-function addPinButtons() {
-    document.querySelectorAll(".group").forEach((msg) => {
-        // Skip if button already exists
-        if (msg.querySelector(".pin-btn")) return;
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'TOGGLE_STATE') {
+        enabled = message.enabled;
+    } else if (message.type === 'JUMP_TO_MESSAGE') {
+        jumpToMessage(message.message);
+    }
+});
 
-        // Create pin button
-        const pinButton = document.createElement("button");
-        pinButton.innerText = "📌 Pin";
-        pinButton.className = "pin-btn";
-        pinButton.style.cssText = `
-            margin-left: 10px;
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            font-size: 14px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        `;
+function pinSelectedText() {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+    
+    if (!text) return;
 
-        // Add hover effect
-        pinButton.addEventListener("mouseover", () => {
-            pinButton.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
-        });
-        pinButton.addEventListener("mouseout", () => {
-            pinButton.style.backgroundColor = "transparent";
-        });
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer.parentElement;
+    
+    const message = {
+        text,
+        position: getMessagePosition(container),
+        timestamp: Date.now()
+    };
 
-        // Handle pin click
-        pinButton.addEventListener("click", () => {
-            const messageText = msg.querySelector('.markdown').innerText || msg.innerText;
-            
-            chrome.storage.sync.get({ pinnedMessages: [] }, (data) => {
-                const messages = data.pinnedMessages;
-                
-                // Check for duplicates
-                if (!messages.some(m => m === messageText)) {
-                    messages.push(messageText);
-                    chrome.storage.sync.set({ pinnedMessages: messages }, () => {
-                        // Visual feedback
-                        pinButton.innerText = "📌 Pinned!";
-                        setTimeout(() => {
-                            pinButton.innerText = "📌 Pin";
-                        }, 1500);
-                    });
-                } else {
-                    // Show already pinned feedback
-                    pinButton.innerText = "Already Pinned";
-                    setTimeout(() => {
-                        pinButton.innerText = "📌 Pin";
-                    }, 1500);
-                }
+    chrome.storage.sync.get(['pinnedMessages'], (data) => {
+        const messages = data.pinnedMessages || [];
+        if (!messages.some(m => m.text === message.text)) {
+            messages.push(message);
+            chrome.storage.sync.set({ pinnedMessages: messages }, () => {
+                showPinConfirmation();
             });
-        });
-
-        // Find the best location to insert the button
-        const targetLocation = msg.querySelector('.flex.justify-between') || msg;
-        targetLocation.appendChild(pinButton);
+        }
     });
 }
 
-// Create and configure the observer
-const observerConfig = {
-    childList: true,
-    subtree: true,
-    attributes: false
-};
+function getMessagePosition(element) {
+    const messageContainer = element.closest('.group');
+    if (!messageContainer) return null;
 
-// Callback function to handle mutations
-const observerCallback = (mutations) => {
-    for (const mutation of mutations) {
-        if (mutation.addedNodes.length) {
-            addPinButtons();
-        }
+    const allMessages = Array.from(document.querySelectorAll('.group'));
+    return allMessages.indexOf(messageContainer);
+}
+
+function jumpToMessage(message) {
+    const allMessages = document.querySelectorAll('.group');
+    const targetMessage = allMessages[message.position];
+    
+    if (targetMessage) {
+        targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        flashElement(targetMessage);
     }
-};
+}
 
-// Initialize the observer
-const observer = new MutationObserver(observerCallback);
+function flashElement(element) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: absolute;
+        inset: 0;
+        background-color: rgba(33, 150, 243, 0.2);
+        border-radius: 4px;
+        pointer-events: none;
+    `;
+    
+    element.style.position = 'relative';
+    element.appendChild(overlay);
+    
+    setTimeout(() => overlay.remove(), 1000);
+}
 
-// Start observing with a slight delay to ensure DOM is ready
-setTimeout(() => {
-    observer.observe(document.body, observerConfig);
-    addPinButtons(); // Initial run
-}, 1000);
+function showPinConfirmation() {
+    const toast = document.createElement('div');
+    toast.textContent = '📌 Message pinned!';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #333;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        z-index: 10000;
+    `;
+    
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+}
+
+chrome.storage.sync.get(['enabled'], (data) => {
+    enabled = data.enabled || false;
+});

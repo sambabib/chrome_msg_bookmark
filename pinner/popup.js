@@ -1,83 +1,85 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const pinMessageButton = document.getElementById("pinMessage");
-    const clearMessagesButton = document.getElementById("clearMessages");
-    const pinnedMessagesList = document.getElementById("pinnedMessages");
+document.addEventListener('DOMContentLoaded', () => {
+    const enableToggle = document.getElementById('enableToggle');
+    const pinnedMessagesContainer = document.getElementById('pinnedMessages');
+    const clearButton = document.getElementById('clearMessages');
 
-    // Function to add pinned message to UI
-    function displayPinnedMessages(messages = []) {
-        // Clear existing messages
-        pinnedMessagesList.innerHTML = "";
+    // Load initial state
+    chrome.storage.sync.get(['enabled', 'pinnedMessages'], (data) => {
+        enableToggle.checked = data.enabled || false;
+        displayPinnedMessages(data.pinnedMessages || []);
+    });
 
-        // Add each message
-        messages.forEach((msg, index) => {
-            // Create list item
-            const li = document.createElement("li");
-
-            // Create and style message span
-            const messageSpan = document.createElement("span");
-            messageSpan.textContent = msg;
-            messageSpan.style.marginRight = "8px";
-            li.appendChild(messageSpan);
-
-            // Create delete button
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "❌";
-            deleteBtn.addEventListener("click", () => deletePinnedMessage(index));
-            li.appendChild(deleteBtn);
-
-            // Add to list
-            pinnedMessagesList.appendChild(li);
-        });
-    }
-
-    // Load initial messages
-    function loadMessages() {
-        chrome.storage.sync.get("pinnedMessages", (data) => {
-            const messages = data.pinnedMessages || [];
-            displayPinnedMessages(messages);
-        });
-    }
-
-    // Initial load
-    loadMessages();
-
-    // Pin the selected message
-    pinMessageButton.addEventListener("click", () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.scripting.executeScript(
-                {
-                    target: { tabId: tabs[0].id },
-                    function: getSelectedText
-                },
-                (result) => {
-                    if (result?.[0]?.result) {
-                        const newMessage = result[0].result;
-
-                        chrome.storage.sync.get("pinnedMessages", (data) => {
-                            const messages = data.pinnedMessages || [];
-                            if (!messages.includes(newMessage)) {
-                                messages.push(newMessage);
-                                chrome.storage.sync.set({ pinnedMessages: messages }, () => {
-                                    displayPinnedMessages(messages);
-                                });
-                            }
-                        });
-                    }
-                }
-            );
+    // Toggle extension state
+    enableToggle.addEventListener('change', () => {
+        chrome.storage.sync.set({ enabled: enableToggle.checked }, () => {
+            // Notify content script of state change
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { 
+                    type: 'TOGGLE_STATE', 
+                    enabled: enableToggle.checked 
+                });
+            });
         });
     });
 
-    // Clear all pinned messages
-    clearMessagesButton.addEventListener("click", () => {
-        chrome.storage.sync.remove("pinnedMessages", () => {
+    // Clear all messages
+    clearButton.addEventListener('click', () => {
+        chrome.storage.sync.remove('pinnedMessages', () => {
             displayPinnedMessages([]);
         });
     });
 
-    // Delete a single pinned message
-    function deletePinnedMessage(index) {
-        chrome.storage.sync.get("pinnedMessages", (data) => {
+    function displayPinnedMessages(messages) {
+        pinnedMessagesContainer.innerHTML = '';
+        
+        if (messages.length === 0) {
+            pinnedMessagesContainer.innerHTML = '<p>No pinned messages yet. Select text in ChatGPT and use Ctrl+Shift+P to pin.</p>';
+            return;
+        }
+
+        messages.forEach((msg, index) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'pinned-message';
+
+            const textSpan = document.createElement('span');
+            textSpan.className = 'message-text';
+            textSpan.title = msg.text;
+            textSpan.textContent = msg.text.length > 50 
+                ? msg.text.substring(0, 50) + '...' 
+                : msg.text;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'actions';
+
+            const jumpButton = document.createElement('button');
+            jumpButton.textContent = '↗️';
+            jumpButton.title = 'Jump to message';
+            jumpButton.onclick = () => jumpToMessage(msg);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '🗑️';
+            deleteButton.title = 'Delete pin';
+            deleteButton.onclick = () => deleteMessage(index);
+
+            actionsDiv.appendChild(jumpButton);
+            actionsDiv.appendChild(deleteButton);
+            messageDiv.appendChild(textSpan);
+            messageDiv.appendChild(actionsDiv);
+            pinnedMessagesContainer.appendChild(messageDiv);
+        });
+    }
+
+    function jumpToMessage(message) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'JUMP_TO_MESSAGE',
+                message: message
+            });
+        });
+    }
+
+    function deleteMessage(index) {
+        chrome.storage.sync.get(['pinnedMessages'], (data) => {
             const messages = data.pinnedMessages || [];
             messages.splice(index, 1);
             chrome.storage.sync.set({ pinnedMessages: messages }, () => {
@@ -86,8 +88,3 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
-
-// Function to get selected text on the page
-function getSelectedText() {
-    return window.getSelection().toString();
-}
