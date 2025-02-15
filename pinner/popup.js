@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load initial state
     chrome.storage.sync.get(['enabled', 'pinnedMessages'], (data) => {
+        console.log('Retrieved data:', data); // Debugging line
         enableToggle.checked = data.enabled || false;
         displayPinnedMessages(data.pinnedMessages || []);
     });

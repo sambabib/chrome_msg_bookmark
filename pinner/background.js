@@ -3,13 +3,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.storage.sync.get("pinnedMessages", (data) => {
       sendResponse({ pinnedMessages: data.pinnedMessages || [] });
     });
-    return true;
+    return true; // Indicate asynchronous response
   }
 
   if (request.action === "clearPinnedMessages") {
     chrome.storage.sync.remove("pinnedMessages", () => {
       sendResponse({ success: true });
     });
-    return true;
+    return true; // Indicate asynchronous response
   }
+
+  return false; // Return false if no action is handled
 });
