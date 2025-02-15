@@ -1,34 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT Pinner</title>
     <style>
         body {
-            width: 300px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 16px;
-            font-family: Arial, sans-serif;
+            width: 320px;
+            background-color: #f9f9f9;
+            margin: 0;
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+
+        h1 {
+            font-size: 18px;
+            color: #333;
+            margin-top: 0;
             margin-bottom: 16px;
-        }
-        .toggle-container {
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        .switch {
+
+        h1::before {
+            content: '📌';
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .toggle {
             position: relative;
             display: inline-block;
-            width: 40px;
+            width: 48px;
             height: 24px;
+            margin-right: 12px;
         }
-        .switch input {
+
+        .toggle input {
             opacity: 0;
             width: 0;
             height: 0;
         }
+
         .slider {
             position: absolute;
             cursor: pointer;
@@ -37,9 +59,10 @@
             right: 0;
             bottom: 0;
             background-color: #ccc;
-            transition: .4s;
+            transition: .3s;
             border-radius: 24px;
         }
+
         .slider:before {
             position: absolute;
             content: "";
@@ -48,58 +71,121 @@
             left: 4px;
             bottom: 4px;
             background-color: white;
-            transition: .4s;
+            transition: .3s;
             border-radius: 50%;
         }
+
         input:checked + .slider {
             background-color: #2196F3;
         }
+
         input:checked + .slider:before {
-            transform: translateX(16px);
+            transform: translateX(24px);
         }
-        button {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: #f8f8f8;
-            cursor: pointer;
+
+        .messages-container {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 10px;
         }
-        button:hover {
-            background: #eee;
-        }
+
         .pinned-message {
-            padding: 8px;
-            margin: 8px 0;
+            margin-bottom: 12px;
+            padding: 12px;
             border: 1px solid #eee;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
+            border-radius: 6px;
+            background-color: #f5f8ff;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+
+        .pinned-message:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .pinned-message:last-child {
+            margin-bottom: 0;
+        }
+
         .message-text {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            word-break: break-word;
+            font-size: 14px;
         }
+
         .actions {
             display: flex;
-            gap: 4px;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .action-button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .action-button:hover {
+            background-color: #eee;
+        }
+
+        .clear-button {
+            width: 100%;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .clear-button::before {
+            content: '🗑️';
+        }
+
+        .clear-button:hover {
+            background-color: #e0e0e0;
+        }
+
+        .no-messages {
+            padding: 16px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="toggle-container">
-            <label class="switch">
-                <input type="checkbox" id="enableToggle">
-                <span class="slider"></span>
-            </label>
-            <span>Enable Pinning</span>
-        </div>
+    <h1>ChatGPT Pinner</h1>
+    
+    <div class="toggle-container">
+        <label class="toggle">
+            <input type="checkbox" id="enableToggle">
+            <span class="slider"></span>
+        </label>
+        <span>Enable Pinner</span>
     </div>
-    <div id="pinnedMessages"></div>
+    
+    <div class="messages-container" id="pinnedMessages"></div>
+    
+    <button id="clearMessages" class="clear-button">Clear All Messages</button>
+    
     <script src="./popup.js"></script>
 </body>
 </html>
