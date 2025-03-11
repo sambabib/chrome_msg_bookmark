@@ -1,14 +1,16 @@
     {
         "manifest_version": 3,
-        "name": "GPT Thread Pinner",
-        "version": "1.1",
-        "description": "Pin and easily navigate ChatGPT messages.",
+        "name": "Chat Message Pinner",
+        "version": "1.2",
+        "description": "Pin and easily navigate to important messages in ChatGPT and Claude chat threads.",
         "author": "Emmanuel Akala",
         "permissions": [
             "storage"
         ],
         "host_permissions": [
-            "https://chatgpt.com/*"
+            "https://chat.openai.com/*",
+            "https://chatgpt.com/*",
+            "https://claude.ai/*"
         ],
         "background": {
             "service_worker": "background.js"
@@ -16,7 +18,9 @@
         "content_scripts": [
             {
                 "matches": [
-                    "https://chatgpt.com/*"
+                    "https://chat.openai.com/*",
+                    "https://chatgpt.com/*",
+                    "https://claude.ai/*"
                 ],
                 "js": [
                     "content.js"
