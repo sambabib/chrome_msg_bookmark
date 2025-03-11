@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatGPT Pinner</title>
+    <title>Chat Message Pinner</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -26,7 +26,7 @@
         h1::before {
             content: '📌';
         }
-
+        
         .toggle-container {
             display: flex;
             align-items: center;
@@ -100,6 +100,9 @@
             border-radius: 6px;
             background-color: #f5f8ff;
             transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .pinned-message:hover {
@@ -113,16 +116,16 @@
 
         .message-text {
             display: block;
-            margin-bottom: 8px;
             color: #333;
             word-break: break-word;
             font-size: 14px;
+            flex: 1;
         }
 
         .actions {
             display: flex;
-            justify-content: flex-end;
             gap: 6px;
+            margin-left: 8px;
         }
 
         .action-button {
@@ -169,10 +172,17 @@
             font-style: italic;
             font-size: 14px;
         }
+        
+        .how-to {
+            font-size: 12px;
+            color: #666;
+            margin-top: 12px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <h1>ChatGPT Pinner</h1>
+    <h1>Chat Message Pinner</h1>
     
     <div class="toggle-container">
         <label class="toggle">
@@ -185,6 +195,10 @@
     <div class="messages-container" id="pinnedMessages"></div>
     
     <button id="clearMessages" class="clear-button">Clear All Messages</button>
+    
+    <div class="how-to">
+        Select text in ChatGPT or Claude to pin it. Click ↗️ to jump to a pinned message.
+    </div>
     
     <script src="./popup.js"></script>
 </body>
