@@ -1,33 +1,35 @@
-    {
-        "manifest_version": 3,
-        "name": "Chat Message Pinner",
-        "version": "1.2",
-        "description": "Pin and easily navigate to important messages in ChatGPT and Claude chat threads.",
-        "author": "Emmanuel Akala",
-        "permissions": [
-            "storage"
-        ],
-        "host_permissions": [
-            "https://chat.openai.com/*",
-            "https://chatgpt.com/*",
-            "https://claude.ai/*"
-        ],
-        "background": {
-            "service_worker": "background.js"
-        },
-        "content_scripts": [
-            {
-                "matches": [
-                    "https://chat.openai.com/*",
-                    "https://chatgpt.com/*",
-                    "https://claude.ai/*"
-                ],
-                "js": [
-                    "content.js"
-                ]
-            }
-        ],
-        "action": {
-            "default_popup": "popup.html"
+{
+    "manifest_version": 3,
+    "name": "Chat Message Pinner",
+    "version": "1.2",
+    "description": "Pin and easily navigate to important messages in ChatGPT, Claude, and Grok chat threads.",
+    "author": "Sambabib",
+    "permissions": [
+        "storage"
+    ],
+    "host_permissions": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://grok.x.ai/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://chat.openai.com/*",
+                "https://chatgpt.com/*",
+                "https://claude.ai/*",
+                "https://grok.x.ai/*"
+            ],
+            "js": [
+                "content.js"
+            ]
         }
+    ],
+    "action": {
+        "default_popup": "popup.html"
     }
+}

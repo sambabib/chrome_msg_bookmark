@@ -114,8 +114,9 @@ function detectPlatform() {
         return 'chatgpt';
     } else if (url.includes('claude.ai')) {
         return 'claude';
+    } else if (url.includes('grok.x.ai')) {
+        return 'grok';
     }
-    // Add other platforms as needed
     return 'unknown';
 }
 
@@ -219,7 +220,10 @@ function removePinButton() {
 // Store the selected text with location data
 function pinSelectedText(selection) {
     const text = selection.toString().trim();
-    if (!text) return;
+    if (!text) {
+        showConfirmation('No text selected to pin', true);
+        return;
+    }
 
     console.log('Pinning text:', text.substring(0, 30) + '...');
 
@@ -232,18 +236,33 @@ function pinSelectedText(selection) {
         element = element.parentNode;
     }
 
+    // Try to find the most relevant parent container based on platform
+    const platform = detectPlatform();
+    let messageContainer = null;
+
+    if (platform === 'chatgpt') {
+        messageContainer = element.closest('.markdown') || element;
+    } else if (platform === 'claude') {
+        messageContainer = element.closest('.prose') || element;
+    } else if (platform === 'grok') {
+        messageContainer = element.closest('.message-content') || element.closest('.message') || element;
+    }
+
     // Get some context to help find this element later
-    const surroundingText = getSurroundingText(element);
+    const surroundingText = getSurroundingText(messageContainer || element);
 
     // Create a bookmark with multiple ways to find this element later
     const bookmark = {
         text,
         textContext: surroundingText,
-        xpath: generateXPath(element),
-        selector: generateSelector(element),
+        xpath: generateXPath(messageContainer || element),
+        selector: generateSelector(messageContainer || element),
         timestamp: Date.now(),
         url: window.location.href,
-        platform: detectPlatform()
+        platform: platform,
+        // Store selection range info for more precise highlighting
+        selectionStart: range.startOffset,
+        selectionEnd: range.endOffset
     };
 
     console.log('Created bookmark:', bookmark);
@@ -252,7 +271,25 @@ function pinSelectedText(selection) {
     chrome.storage.sync.get(['pinnedMessages'], function (data) {
         try {
             const messages = data.pinnedMessages || [];
+            
+            // Check for duplicates
+            const isDuplicate = messages.some(msg => 
+                msg.text === bookmark.text && 
+                msg.url === bookmark.url
+            );
+
+            if (isDuplicate) {
+                showConfirmation('This text is already pinned!', true);
+                return;
+            }
+
             messages.push(bookmark);
+
+            // Check storage limits (Chrome sync storage has limits)
+            const storageLimit = 100; // Maximum number of pins to store
+            if (messages.length > storageLimit) {
+                messages.shift(); // Remove oldest pin
+            }
 
             chrome.storage.sync.set({ pinnedMessages: messages }, function () {
                 if (chrome.runtime.lastError) {
@@ -316,6 +353,12 @@ function generateXPath(element) {
             if (messageElement) {
                 return getXPathForElement(messageElement);
             }
+        } else if (platform === 'grok') {
+            // Grok-specific containers
+            const messageElement = element.closest('.message-content') || element.closest('.message');
+            if (messageElement) {
+                return getXPathForElement(messageElement);
+            }
         }
 
         // Generic fallback
@@ -363,6 +406,13 @@ function generateSelector(element) {
             if (messageElement) {
                 return '.prose:contains(' + element.textContent.substring(0, 30).replace(/[^\w\s]/g, '') + ')';
             }
+        } else if (platform === 'grok') {
+            // Add Grok-specific selector
+            const messageElement = element.closest('.message-content') || element.closest('.message');
+            if (messageElement) {
+                return (messageElement.classList.contains('message-content') ? '.message-content' : '.message') + 
+                       ':contains(' + element.textContent.substring(0, 30).replace(/[^\w\s]/g, '') + ')';
+            }
         }
 
         // Generic approach
@@ -381,36 +431,66 @@ function generateSelector(element) {
 // Enhanced confirmation message with optional error state
 function showConfirmation(message, isError = false) {
     const confirmation = document.createElement('div');
-    confirmation.textContent = isError ? '❌ ' + message : '📌 ' + message;
+    const icon = isError ? '❌' : '📌';
+    confirmation.textContent = icon + ' ' + message;
+    
     confirmation.style.cssText = `
         position: fixed;
         bottom: 20px;
         right: 20px;
         background: ${isError ? '#f44336' : '#4CAF50'};
         color: white;
-        padding: 10px 16px;
-        border-radius: 4px;
+        padding: 12px 20px;
+        border-radius: 8px;
         z-index: 10000;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         font-size: 14px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        animation: fadeIn 0.3s, fadeOut 0.3s 1.7s;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transform-origin: bottom;
+        animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 1.7s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 300px;
+        word-break: break-word;
+        line-height: 1.4;
     `;
 
     const styles = document.createElement('style');
     styles.textContent = `
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(20px) scale(0.8);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
         @keyframes fadeOut {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(20px); }
+            from { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            to { 
+                opacity: 0;
+                transform: translateY(10px) scale(0.9);
+            }
         }
     `;
     document.head.appendChild(styles);
 
+    // Remove any existing confirmation messages
+    const existingConfirmation = document.querySelector('.pinner-confirmation');
+    if (existingConfirmation) {
+        existingConfirmation.remove();
+    }
+
+    confirmation.className = 'pinner-confirmation';
     document.body.appendChild(confirmation);
+
+    // Remove the elements after animation completes
     setTimeout(() => {
         confirmation.remove();
         styles.remove();
@@ -422,6 +502,7 @@ function jumpToMessage(bookmark) {
     console.log('Jumping to message:', bookmark);
 
     let element = null;
+    const platform = detectPlatform();
 
     // Try multiple strategies to find the element
     if (bookmark.xpath) {
@@ -439,17 +520,60 @@ function jumpToMessage(bookmark) {
         }
     }
 
-    // Try by selector
+    // Try by selector with platform-specific optimizations
     if (!element && bookmark.selector) {
         try {
-            element = document.querySelector(bookmark.selector);
-            console.log('Found by selector:', element);
+            // Try to find elements that match the selector
+            const elements = document.querySelectorAll(bookmark.selector);
+            console.log(`Found ${elements.length} elements matching selector:`, bookmark.selector);
+            
+            // If multiple elements match, try to find the one containing our text
+            if (elements.length > 1 && bookmark.text) {
+                for (const el of elements) {
+                    if (el.textContent.includes(bookmark.text)) {
+                        element = el;
+                        console.log('Found matching element by text content within selector:', element);
+                        break;
+                    }
+                }
+            } else if (elements.length === 1) {
+                element = elements[0];
+            }
         } catch (e) {
             console.warn('Selector query failed:', e);
         }
     }
 
-    // Try by text content
+    // Try platform-specific selectors if the above methods failed
+    if (!element) {
+        try {
+            let platformSelectors = [];
+            
+            if (platform === 'chatgpt' || bookmark.platform === 'chatgpt') {
+                platformSelectors = ['.markdown', '.text-message', '.message-content'];
+            } else if (platform === 'claude' || bookmark.platform === 'claude') {
+                platformSelectors = ['.prose', '.message-content', '.claude-message'];
+            } else if (platform === 'grok' || bookmark.platform === 'grok') {
+                platformSelectors = ['.message-content', '.message', '.grok-message'];
+            }
+            
+            for (const selector of platformSelectors) {
+                const elements = document.querySelectorAll(selector);
+                for (const el of elements) {
+                    if (el.textContent.includes(bookmark.text)) {
+                        element = el;
+                        console.log(`Found by platform-specific selector ${selector}:`, element);
+                        break;
+                    }
+                }
+                if (element) break;
+            }
+        } catch (e) {
+            console.warn('Platform-specific search failed:', e);
+        }
+    }
+
+    // Try by text content as a fallback
     if (!element && bookmark.text) {
         const elements = document.querySelectorAll('p, div, span');
         for (const el of elements) {
@@ -490,11 +614,15 @@ function jumpToMessage(bookmark) {
         setTimeout(() => {
             element.style.backgroundColor = originalBackground;
         }, 2000);
+        
+        return true;
     } else {
-        alert('Could not find the pinned message. It may have been removed or the conversation was reset.');
+        console.error('Could not find the pinned message');
+        showConfirmation('Could not find the pinned message. It may have been removed or the conversation was reset.', true);
+        return false;
     }
 }
 
 // Load initial state
 initializeState();
-console.log('Message Pinner content script loaded - works with ChatGPT and Claude');
+console.log('Message Pinner content script loaded - works with ChatGPT, Claude, and Grok');
