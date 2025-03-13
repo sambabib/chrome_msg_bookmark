@@ -134,36 +134,30 @@ describe("Chat Message Pinner Extension", () => {
         // Mock alert and confirm
         global.alert = jest.fn();
         global.confirm = jest.fn(() => true);
-        
+
         // Reset modules before loading scripts
         jest.resetModules();
-        
-        // Initialize toast system
-        require('./toast.js');
-        
-        // Mock toast notification system
-        if (!window.pinnerToast) {
-            window.pinnerToast = {
-                success: jest.fn(),
-                error: jest.fn(),
-                info: jest.fn(),
-                warning: jest.fn(),
-                show: jest.fn()
-            };
-        } else {
-            // Reset mock functions
-            window.pinnerToast.success.mockClear();
-            window.pinnerToast.error.mockClear();
-            window.pinnerToast.info.mockClear();
-            window.pinnerToast.warning.mockClear();
-            window.pinnerToast.show.mockClear();
-        }
+
+        // Create proper Jest mock functions for toast
+        window.pinnerToast = {
+            success: jest.fn(),
+            error: jest.fn(),
+            info: jest.fn(),
+            warning: jest.fn(),
+            show: jest.fn()
+        };
+
+        // Mock toast.js initialization
+        jest.mock('./toast.js', () => {
+            // This mock just ensures the toast.js script doesn't overwrite our mock
+            return {};
+        }, { virtual: true });
     });
 
     function loadPopupScript() {
         // Load the script
         require('./popup.js');
-        
+
         // Dispatch DOMContentLoaded event to trigger initialization
         document.dispatchEvent(new Event('DOMContentLoaded'));
     }
@@ -195,7 +189,7 @@ describe("Chat Message Pinner Extension", () => {
 
         // Check if sendMessage was called to jump to the message
         expect(chrome.tabs.sendMessage).toHaveBeenCalled();
-        
+
         // Check if toast notification was shown
         expect(window.pinnerToast.info).toHaveBeenCalledWith('Jumping to message...');
     });
@@ -216,7 +210,7 @@ describe("Chat Message Pinner Extension", () => {
             ['pinnedMessages'],
             expect.any(Function)
         );
-        
+
         // Check if toast notification was shown
         expect(window.pinnerToast.success).toHaveBeenCalledWith('Pin deleted successfully');
     });
@@ -235,7 +229,7 @@ describe("Chat Message Pinner Extension", () => {
             'pinnedMessages',
             expect.any(Function)
         );
-        
+
         // Check if toast notification was shown
         expect(window.pinnerToast.info).toHaveBeenCalledWith('All pins have been cleared');
     });
@@ -265,7 +259,7 @@ describe("Chat Message Pinner Extension", () => {
 
         // Get the toggle element
         const enableToggle = document.getElementById("enableToggle");
-        
+
         // Change the toggle state
         enableToggle.checked = false;
         fireEvent.change(enableToggle);
@@ -275,36 +269,36 @@ describe("Chat Message Pinner Extension", () => {
             { enabled: false },
             expect.any(Function)
         );
-        
+
         // Check if toast notification was shown
         expect(window.pinnerToast.info).toHaveBeenCalledWith('Extension disabled');
     });
-    
+
     // New tests for settings functionality
     test("should toggle settings visibility when settings button is clicked", async () => {
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
-        
+
         // Get the settings toggle button and container
         const settingsToggle = document.getElementById("settingsToggle");
         const settingsContainer = document.getElementById("settingsContainer");
-        
+
         // Initially settings should be hidden
         expect(settingsContainer.classList.contains("visible")).toBe(false);
-        
+
         // Click the settings toggle
         fireEvent.click(settingsToggle);
-        
+
         // Settings should now be visible
         expect(settingsContainer.classList.contains("visible")).toBe(true);
-        
+
         // Click again to hide
         fireEvent.click(settingsToggle);
-        
+
         // Settings should be hidden again
         expect(settingsContainer.classList.contains("visible")).toBe(false);
     });
-    
+
     test("should load settings values on initialization", async () => {
         // Mock specific settings values
         chrome.storage.sync.get = jest.fn((keys, callback) => {
@@ -318,164 +312,131 @@ describe("Chat Message Pinner Extension", () => {
                 callback({});
             }
         });
-        
+
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
-        
+
         // Check if settings inputs have the correct values
         const maxPinsInput = document.getElementById("maxPins");
         expect(maxPinsInput.value).toBe("75");
     });
-    
+
     test("should save settings when save button is clicked", async () => {
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
-        
+
         // Get the settings inputs and save button
         const maxPinsInput = document.getElementById("maxPins");
         const saveButton = document.getElementById("saveSettings");
-        
+
         // Change the settings values
         maxPinsInput.value = "80";
-        
+
         // Click the save button
         fireEvent.click(saveButton);
-        
+
         // Check if storage was updated with new settings
         expect(chrome.storage.sync.set).toHaveBeenCalledWith(
             { maxPins: 80 },
             expect.any(Function)
         );
-        
+
         // Check if toast notification was shown
         expect(window.pinnerToast.success).toHaveBeenCalledWith('Settings saved successfully!');
     });
-    
+
     test("should validate settings input values", async () => {
-        // Make sure toast is defined and reset mocks
-        if (!window.pinnerToast) {
-            window.pinnerToast = {
-                success: jest.fn(),
-                error: jest.fn(),
-                info: jest.fn(),
-                warning: jest.fn(),
-                show: jest.fn()
-            };
-        } else {
-            // Reset toast mock functions
-            window.pinnerToast.success.mockClear();
-            window.pinnerToast.error.mockClear();
-            window.pinnerToast.info.mockClear();
-        }
-        
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
-        
+
         // Get the settings inputs and save button
         const maxPinsInput = document.getElementById("maxPins");
         const saveButton = document.getElementById("saveSettings");
-        
+
         // Test invalid max pins (too low)
         maxPinsInput.value = "3";
         fireEvent.click(saveButton);
-        
+
         expect(window.pinnerToast.error).toHaveBeenCalledWith('Max pins must be between 5 and 100');
         expect(chrome.storage.sync.set).not.toHaveBeenCalled();
-        
+
         // Reset mock
         window.pinnerToast.error.mockClear();
         chrome.storage.sync.set.mockClear();
-        
+
         // Test invalid max pins (too high)
         maxPinsInput.value = "150";
         fireEvent.click(saveButton);
-        
+
         expect(window.pinnerToast.error).toHaveBeenCalledWith('Max pins must be between 5 and 100');
         expect(chrome.storage.sync.set).not.toHaveBeenCalled();
-        
+
         // Reset mock
         window.pinnerToast.error.mockClear();
         window.pinnerToast.success.mockClear();
         chrome.storage.sync.set.mockClear();
-        
+
         // Test valid values
         maxPinsInput.value = "50";
         fireEvent.click(saveButton);
-        
+
         expect(window.pinnerToast.success).toHaveBeenCalledWith('Settings saved successfully!');
         expect(chrome.storage.sync.set).toHaveBeenCalledWith({ maxPins: 50 }, expect.any(Function));
     });
-    
+
     test("should fall back to alert when toast is not available", async () => {
         // Remove toast from window before loading popup script
         delete window.pinnerToast;
-        
+
         // Load popup script without toast
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
-        
+
         // Try to save invalid settings
         const maxPinsInput = document.getElementById("maxPins");
         const saveButton = document.getElementById("saveSettings");
-        
+
         maxPinsInput.value = "3";
         fireEvent.click(saveButton);
-        
+
         // Should use alert as fallback
         expect(global.alert).toHaveBeenCalledWith('Max pins must be between 5 and 100');
     });
-    
+
     test("should show appropriate toast types for different actions", async () => {
-        // Make sure toast is defined
-        if (!window.pinnerToast) {
-            window.pinnerToast = {
-                success: jest.fn(),
-                error: jest.fn(),
-                info: jest.fn(),
-                warning: jest.fn(),
-                show: jest.fn()
-            };
-        } else {
-            // Reset toast mock functions
-            window.pinnerToast.success.mockClear();
-            window.pinnerToast.error.mockClear();
-            window.pinnerToast.info.mockClear();
-        }
-        
-        // Load popup script with toast available
         loadPopupScript();
         await new Promise(resolve => setTimeout(resolve, 0));
-        
+
         // Test success toast - saving valid settings
         const saveButton = document.getElementById("saveSettings");
         const maxPinsInput = document.getElementById("maxPins");
-        
+
         maxPinsInput.value = "50";
         fireEvent.click(saveButton);
         expect(window.pinnerToast.success).toHaveBeenCalledWith('Settings saved successfully!');
-        
+
         // Reset mock
         window.pinnerToast.success.mockClear();
-        
+
         // Test info toast - clearing messages
         const clearButton = document.getElementById("clearMessages");
         fireEvent.click(clearButton);
         expect(window.pinnerToast.info).toHaveBeenCalledWith('All pins have been cleared');
-        
+
         // Reset mock
         window.pinnerToast.info.mockClear();
-        
+
         // Test error toast - invalid settings
         maxPinsInput.value = "3";
         fireEvent.click(saveButton);
         expect(window.pinnerToast.error).toHaveBeenCalledWith('Max pins must be between 5 and 100');
-        
+
         // Test success toast - enabling extension
         const enableToggle = document.getElementById("enableToggle");
         enableToggle.checked = true;
         fireEvent.change(enableToggle);
         expect(window.pinnerToast.success).toHaveBeenCalledWith('Extension enabled');
-        
+
         // Test info toast - disabling extension
         enableToggle.checked = false;
         fireEvent.change(enableToggle);
