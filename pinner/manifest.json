@@ -5,7 +5,8 @@
     "description": "Pin and easily navigate to important messages in ChatGPT, Claude, and Grok chat threads.",
     "author": "Sambabib",
     "permissions": [
-        "storage"
+        "storage",
+        "alarms"
     ],
     "host_permissions": [
         "https://chat.openai.com/*",
@@ -25,6 +26,7 @@
                 "https://grok.x.ai/*"
             ],
             "js": [
+                "toast.js",
                 "content.js"
             ]
         }
