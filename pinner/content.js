@@ -9,7 +9,7 @@ function initializeState() {
 
         // If enabled on load, show the indicator
         if (enabled) {
-            showStatusIndicator();
+            initializeUI();
         }
     });
 }
@@ -23,14 +23,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('Extension state toggled to:', enabled);
 
         if (enabled) {
-            showStatusIndicator();
+            initializeUI();
         } else {
             removeStatusIndicator();
             removePinButton(); // Also remove any active pin buttons
+            removePinIndicators(); // Remove pin indicators
         }
         sendResponse({ success: true });
     } else if (message.type === 'JUMP_TO_MESSAGE') {
         jumpToMessage(message.bookmark);
+        sendResponse({ success: true });
+    } else if (message.type === 'REFRESH_PINS') {
+        if (enabled) {
+            loadAndMarkExistingPins();
+        }
         sendResponse({ success: true });
     }
 
@@ -268,10 +274,12 @@ function pinSelectedText(selection) {
     console.log('Created bookmark:', bookmark);
 
     // Save the bookmark with explicit error handling
-    chrome.storage.sync.get(['pinnedMessages'], function (data) {
+    chrome.storage.sync.get(['pinnedMessages', 'maxPins'], function (data) {
         try {
             const messages = data.pinnedMessages || [];
-            
+            // Default max pins is 50 if not set
+            const maxPins = data.maxPins || 50;
+
             // Check for duplicates
             const isDuplicate = messages.some(msg => 
                 msg.text === bookmark.text && 
@@ -283,13 +291,11 @@ function pinSelectedText(selection) {
                 return;
             }
 
+            // Add the new bookmark
             messages.push(bookmark);
 
-            // Check storage limits (Chrome sync storage has limits)
-            const storageLimit = 100; // Maximum number of pins to store
-            if (messages.length > storageLimit) {
-                messages.shift(); // Remove oldest pin
-            }
+            // Check if we've exceeded max pins
+            checkAndCleanPins();
 
             chrome.storage.sync.set({ pinnedMessages: messages }, function () {
                 if (chrome.runtime.lastError) {
@@ -298,6 +304,9 @@ function pinSelectedText(selection) {
                 } else {
                     console.log('Message pinned successfully. Total pins:', messages.length);
                     showConfirmation('Message pinned successfully!');
+                    
+                    // Add visual indicator to the pinned message
+                    addPinIndicator(messageContainer || element, bookmark);
                 }
             });
         } catch (e) {
@@ -305,6 +314,162 @@ function pinSelectedText(selection) {
             showConfirmation('Error saving message: ' + e.message, true);
         }
     });
+}
+
+// Check if we've exceeded max pins
+function checkAndCleanPins() {
+    chrome.storage.sync.get(['pinnedMessages', 'maxPins'], function (data) {
+        const messages = data.pinnedMessages || [];
+        if (messages.length === 0) return;
+
+        const maxPins = data.maxPins || 50;
+
+        // Sort by timestamp (newest first)
+        messages.sort((a, b) => b.timestamp - a.timestamp);
+
+        // Apply max pins limit
+        const finalMessages = messages.slice(0, maxPins);
+
+        // Only update if we removed any messages
+        if (finalMessages.length < messages.length) {
+            chrome.storage.sync.set({ pinnedMessages: finalMessages }, () => {
+                console.log(`Applied max pins limit. Removed ${messages.length - finalMessages.length} old pins.`);
+            });
+        }
+    });
+}
+
+// Add a visual pin indicator to the message that was pinned
+function addPinIndicator(element, bookmark) {
+    // Check if this element already has a pin indicator
+    if (element.querySelector('.message-pin-indicator')) {
+        return; // Already has a pin indicator
+    }
+    
+    const pinIndicator = document.createElement('div');
+    pinIndicator.className = 'message-pin-indicator';
+    pinIndicator.innerHTML = '📌';
+    pinIndicator.title = 'This message is pinned. Click to view in popup.';
+    pinIndicator.setAttribute('data-pin-id', bookmark.timestamp);
+    
+    pinIndicator.style.cssText = `
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: #2196F3;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        z-index: 1000;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        margin: 8px;
+        transition: transform 0.2s;
+    `;
+    
+    pinIndicator.addEventListener('mouseover', function() {
+        this.style.transform = 'scale(1.1)';
+    });
+    
+    pinIndicator.addEventListener('mouseout', function() {
+        this.style.transform = 'scale(1)';
+    });
+    
+    pinIndicator.addEventListener('click', function() {
+        chrome.runtime.sendMessage({ action: "openPopup" });
+    });
+    
+    // Make sure the element has position relative for absolute positioning of the indicator
+    const computedStyle = window.getComputedStyle(element);
+    if (computedStyle.position === 'static') {
+        element.style.position = 'relative';
+    }
+    
+    element.appendChild(pinIndicator);
+}
+
+// Load existing pins and mark them on the page
+function loadAndMarkExistingPins() {
+    if (!enabled) return;
+    
+    chrome.storage.sync.get(['pinnedMessages'], function(data) {
+        const messages = data.pinnedMessages || [];
+        const currentUrl = window.location.href;
+        
+        // Filter pins for the current page
+        const pagePins = messages.filter(pin => {
+            // Match on domain and path, ignore query params
+            const pinUrlObj = new URL(pin.url);
+            const currentUrlObj = new URL(currentUrl);
+            return pinUrlObj.hostname === currentUrlObj.hostname && 
+                   pinUrlObj.pathname === currentUrlObj.pathname;
+        });
+        
+        console.log(`Found ${pagePins.length} pins for this page`);
+        
+        // Try to find and mark each pinned message
+        pagePins.forEach(pin => {
+            setTimeout(() => {
+                try {
+                    // Try to find the element using various methods
+                    let element = null;
+                    
+                    // Try XPath
+                    if (pin.xpath) {
+                        try {
+                            const result = document.evaluate(
+                                pin.xpath, document, null, 
+                                XPathResult.FIRST_ORDERED_NODE_TYPE, null
+                            );
+                            if (result.singleNodeValue) {
+                                element = result.singleNodeValue;
+                            }
+                        } catch (e) {
+                            console.warn('XPath lookup failed:', e);
+                        }
+                    }
+                    
+                    // Try CSS selector
+                    if (!element && pin.selector) {
+                        try {
+                            element = document.querySelector(pin.selector);
+                        } catch (e) {
+                            console.warn('CSS selector lookup failed:', e);
+                        }
+                    }
+                    
+                    // If we found the element, mark it
+                    if (element) {
+                        addPinIndicator(element, pin);
+                    }
+                } catch (e) {
+                    console.error('Error marking pinned message:', e);
+                }
+            }, 500); // Small delay to ensure DOM is ready
+        });
+    });
+}
+
+// Call this when the extension is enabled
+function initializeUI() {
+    if (enabled) {
+        showStatusIndicator();
+        loadAndMarkExistingPins();
+    } else {
+        removeStatusIndicator();
+        removePinIndicators();
+    }
+}
+
+// Remove all pin indicators
+function removePinIndicators() {
+    const indicators = document.querySelectorAll('.message-pin-indicator');
+    indicators.forEach(indicator => indicator.remove());
 }
 
 // Get surrounding text to help find this element later
@@ -428,73 +593,62 @@ function generateSelector(element) {
     }
 }
 
-// Enhanced confirmation message with optional error state
+// Show a confirmation message
 function showConfirmation(message, isError = false) {
-    const confirmation = document.createElement('div');
-    const icon = isError ? '❌' : '📌';
-    confirmation.textContent = icon + ' ' + message;
-    
-    confirmation.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: ${isError ? '#f44336' : '#4CAF50'};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        transform-origin: bottom;
-        animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 1.7s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        max-width: 300px;
-        word-break: break-word;
-        line-height: 1.4;
-    `;
-
-    const styles = document.createElement('style');
-    styles.textContent = `
-        @keyframes slideIn {
-            from { 
-                opacity: 0;
-                transform: translateY(20px) scale(0.8);
+    // Check if toast notification system is available
+    if (!window.pinnerToast) {
+        // Fallback to the original confirmation UI
+        const confirmation = document.createElement('div');
+        const styles = document.createElement('style');
+        
+        styles.textContent = `
+            .pinner-confirmation {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 10px 20px;
+                background-color: ${isError ? '#f44336' : '#4CAF50'};
+                color: white;
+                border-radius: 4px;
+                z-index: 10000;
+                font-family: Arial, sans-serif;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                animation: pinner-fade 4s forwards;
             }
-            to { 
-                opacity: 1;
-                transform: translateY(0) scale(1);
+            
+            @keyframes pinner-fade {
+                0% { opacity: 0; transform: translateY(20px); }
+                10% { opacity: 1; transform: translateY(0); }
+                90% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-20px); }
             }
+        `;
+        
+        document.head.appendChild(styles);
+        confirmation.textContent = message;
+        
+        // Remove any existing confirmation
+        const existingConfirmation = document.querySelector('.pinner-confirmation');
+        if (existingConfirmation) {
+            existingConfirmation.remove();
         }
-        @keyframes fadeOut {
-            from { 
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-            to { 
-                opacity: 0;
-                transform: translateY(10px) scale(0.9);
-            }
+        
+        confirmation.className = 'pinner-confirmation';
+        document.body.appendChild(confirmation);
+        
+        // Remove the elements after animation completes
+        setTimeout(() => {
+            confirmation.remove();
+            styles.remove();
+        }, 4000);
+    } else {
+        // Use the toast notification system
+        if (isError) {
+            window.pinnerToast.error(message);
+        } else {
+            window.pinnerToast.success(message);
         }
-    `;
-    document.head.appendChild(styles);
-
-    // Remove any existing confirmation messages
-    const existingConfirmation = document.querySelector('.pinner-confirmation');
-    if (existingConfirmation) {
-        existingConfirmation.remove();
     }
-
-    confirmation.className = 'pinner-confirmation';
-    document.body.appendChild(confirmation);
-
-    // Remove the elements after animation completes
-    setTimeout(() => {
-        confirmation.remove();
-        styles.remove();
-    }, 2000);
 }
 
 // Jump to message (called from popup)

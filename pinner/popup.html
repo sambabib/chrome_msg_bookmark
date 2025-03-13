@@ -103,6 +103,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
         }
 
         .pinned-message:hover {
@@ -112,6 +113,22 @@
 
         .pinned-message:last-child {
             margin-bottom: 0;
+        }
+        
+        /* Platform-specific styling */
+        .platform-chatgpt {
+            border-left: 4px solid #19c37d;
+            background-color: #f0faf5;
+        }
+        
+        .platform-claude {
+            border-left: 4px solid #8e44ad;
+            background-color: #f5f0fa;
+        }
+        
+        .platform-grok {
+            border-left: 4px solid #1da1f2;
+            background-color: #f0f8ff;
         }
 
         .message-text {
@@ -179,27 +196,208 @@
             margin-top: 12px;
             text-align: center;
         }
+        
+        /* Badge to show number of pins */
+        .pin-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #2196F3;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        /* Settings section */
+        .settings-toggle {
+            margin-top: 16px;
+            text-align: center;
+            cursor: pointer;
+            color: #666;
+            font-size: 13px;
+            user-select: none;
+        }
+        
+        .settings-toggle:hover {
+            color: #333;
+        }
+        
+        .settings-container {
+            margin-top: 12px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 12px;
+            display: none;
+        }
+        
+        .settings-container.visible {
+            display: block;
+        }
+        
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .setting-label {
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .setting-input {
+            width: 70px;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .save-settings {
+            width: 100%;
+            padding: 8px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        .save-settings:hover {
+            background-color: #0b7dda;
+        }
+        
+        .settings-status {
+            font-size: 12px;
+            color: #4CAF50;
+            text-align: center;
+            margin-top: 6px;
+            height: 15px;
+        }
+        
+        /* New styles */
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .content {
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .footer {
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        
+        .settings-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4285f4;
+        }
+        
+        .settings-group {
+            margin-bottom: 15px;
+        }
+        
+        .settings-description {
+            font-size: 12px;
+            color: #777;
+            margin-top: 5px;
+        }
+        
+        .settings-save {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .settings-save:hover {
+            background-color: #388E3C;
+        }
     </style>
 </head>
 <body>
-    <h1>Chat Message Pinner</h1>
-    
-    <div class="toggle-container">
-        <label class="toggle">
-            <input type="checkbox" id="enableToggle">
-            <span class="slider"></span>
-        </label>
-        <span>Enable Pinner</span>
+    <div class="header">
+        <h1>Chat Message Pinner</h1>
+        <div class="toggle-container">
+            <label class="toggle">
+                <input type="checkbox" id="enableToggle">
+                <span class="slider"></span>
+            </label>
+            <span>Enable Pinner</span>
+        </div>
     </div>
     
-    <div class="messages-container" id="pinnedMessages"></div>
+    <div class="content">
+        <div class="messages-container" id="pinnedMessages"></div>
+        
+        <button id="settingsToggle" class="settings-toggle">⚙️ Settings</button>
+        
+        <div id="settingsContainer" class="settings-container">
+            <h3 class="settings-title">Message Settings</h3>
+            
+            <div class="settings-group">
+                <label class="settings-label" for="maxPins">Maximum Pins</label>
+                <input type="number" id="maxPins" class="setting-input" min="5" max="100" value="50">
+                <div class="settings-description">Maximum number of pins to keep. Oldest will be removed first. (5-100 pins)</div>
+            </div>
+            
+            <button id="saveSettings" class="save-settings">Save Settings</button>
+            <div id="settingsStatus" class="settings-status"></div>
+        </div>
+    </div>
     
-    <button id="clearMessages" class="clear-button">Clear All Messages</button>
+    <div class="footer">
+        <button id="clearMessages" class="clear-button">Clear All Messages</button>
+    </div>
     
     <div class="how-to">
-        Select text in ChatGPT or Claude to pin it. Click ↗️ to jump to a pinned message.
+        Select text in ChatGPT, Claude, or Grok to pin it. Click ↗️ to jump to a pinned message.
     </div>
     
-    <script src="./popup.js"></script>
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <script src="toast.js"></script>
+    <script src="popup.js"></script>
 </body>
 </html>
