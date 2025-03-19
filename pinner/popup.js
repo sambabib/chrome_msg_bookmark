@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxPinsInput = document.getElementById('maxPins');
     const saveSettingsButton = document.getElementById('saveSettings');
     const settingsStatus = document.getElementById('settingsStatus');
-    
+    const toastContainer = document.getElementById('pinnerToastContainer');
+
     // Ensure toast container exists
     if (!document.getElementById('pinnerToastContainer')) {
         const toastContainer = document.createElement('div');
@@ -15,19 +16,32 @@ document.addEventListener('DOMContentLoaded', () => {
         toastContainer.className = 'pinner-toast-container';
         document.body.appendChild(toastContainer);
     }
-    
+
+    // Listen for new pins being added
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === 'PIN_ADDED') {
+            // Reload pinned messages to show the new pin
+            loadPinnedMessages();
+
+            // Show success notification
+            if (window.pinnerToast) {
+                window.pinnerToast.success('New message pinned!');
+            }
+        }
+    });
+
     // Load initial state
     chrome.storage.sync.get(['enabled', 'pinnedMessages', 'maxPins'], (data) => {
         console.log('Retrieved data:', data);
         enableToggle.checked = data.enabled || false;
-        
+
         // Load settings values
         maxPinsInput.value = data.maxPins || 50;
-        
+
         // Directly use the pinnedMessages from storage instead of requesting from background
         displayPinnedMessages(data.pinnedMessages || []);
     });
-    
+
     // Toggle extension state
     enableToggle.addEventListener('change', () => {
         const newState = enableToggle.checked;
@@ -35,9 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Notify content script of state change
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 if (tabs[0] && tabs[0].id) {
-                    chrome.tabs.sendMessage(tabs[0].id, { 
-                        type: 'TOGGLE_STATE', 
-                        enabled: newState 
+                    chrome.tabs.sendMessage(tabs[0].id, {
+                        type: 'TOGGLE_STATE',
+                        enabled: newState
                     }, (response) => {
                         console.log('Content script response:', response || 'No response');
                     });
@@ -45,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn('No active tab found');
                 }
             });
-            
+
             // Show toast notification
             if (window.pinnerToast) {
                 if (newState) {
@@ -57,19 +71,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         console.log("toggle_state", newState);
     });
-    
+
     // Toggle settings visibility
     settingsToggle.addEventListener('click', () => {
         settingsContainer.classList.toggle('visible');
-        settingsToggle.textContent = settingsContainer.classList.contains('visible') 
-            ? '⚙️ Hide Settings' 
+        settingsToggle.textContent = settingsContainer.classList.contains('visible')
+            ? '⚙️ Hide Settings'
             : '⚙️ Settings';
     });
-    
+
     // Save settings
     saveSettingsButton.addEventListener('click', () => {
         const maxPins = parseInt(maxPinsInput.value) || 50;
-        
+
         // Validate maxPins
         if (maxPins < 5 || maxPins > 100) {
             if (window.pinnerToast) {
@@ -79,9 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
-        
+
         // Save settings
-        chrome.storage.sync.set({ 
+        chrome.storage.sync.set({
             maxPins: maxPins
         }, () => {
             if (window.pinnerToast) {
@@ -89,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (settingsStatus) {
                 settingsStatus.textContent = 'Settings saved!';
                 settingsStatus.style.color = '#4CAF50';
-                
+
                 // Clear status message after 3 seconds
                 setTimeout(() => {
                     settingsStatus.textContent = '';
@@ -97,28 +111,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-    
+
     // Load pinned messages directly from storage
     function loadPinnedMessages() {
         chrome.storage.sync.get(['pinnedMessages'], (data) => {
             displayPinnedMessages(data.pinnedMessages || []);
         });
     }
-    
+
     // Clear all messages
     clearButton.addEventListener('click', () => {
         if (confirm('Are you sure you want to clear all pinned messages?')) {
             chrome.storage.sync.remove('pinnedMessages', () => {
                 displayPinnedMessages([]);
-                
+
                 if (window.pinnerToast) {
                     window.pinnerToast.info('All pins have been cleared');
                 }
-                
+
                 // Notify content script to refresh pins
                 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                     if (tabs[0] && tabs[0].id) {
-                        chrome.tabs.sendMessage(tabs[0].id, { 
+                        chrome.tabs.sendMessage(tabs[0].id, {
                             type: 'REFRESH_PINS'
                         });
                     }
@@ -126,26 +140,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
-    
+
     function displayPinnedMessages(messages) {
         pinnedMessagesContainer.innerHTML = '';
-        
+
         if (!messages || messages.length === 0) {
             pinnedMessagesContainer.innerHTML = '<div class="no-messages">No pinned messages yet. Select text in ChatGPT, Claude, or Grok to pin it.</div>';
             return;
         }
-        
+
         // Sort messages by timestamp (newest first)
         messages.sort((a, b) => b.timestamp - a.timestamp);
-        
+
         messages.forEach((msg, index) => {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'pinned-message';
-            
+
             // Determine which platform this message is from
             const platform = msg.platform || 'unknown';
             let platformIcon = '💬'; // Default
-            
+
             if (platform === 'chatgpt') {
                 platformIcon = '🤖';
                 messageDiv.classList.add('platform-chatgpt');
@@ -156,37 +170,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 platformIcon = '🔍';
                 messageDiv.classList.add('platform-grok');
             }
-            
+
             // Add timestamp display
             const date = new Date(msg.timestamp);
-            const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-            
+            const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
             const textSpan = document.createElement('span');
             textSpan.className = 'message-text';
             textSpan.title = `${msg.text}\n\nPinned on: ${formattedDate}`;
-            
+
             // Truncate text for display
-            const displayText = msg.text.length > 65 
-                ? msg.text.substring(0, 65) + '...' 
+            const displayText = msg.text.length > 65
+                ? msg.text.substring(0, 65) + '...'
                 : msg.text;
-                
+
             textSpan.textContent = platformIcon + ' ' + displayText;
-            
+
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'actions';
-            
+
             const jumpButton = document.createElement('button');
             jumpButton.className = 'action-button';
             jumpButton.textContent = '↗️';
             jumpButton.title = 'Jump to message';
             jumpButton.onclick = () => jumpToMessage(msg);
-            
+
             const deleteButton = document.createElement('button');
             deleteButton.className = 'action-button';
             deleteButton.textContent = '🗑️';
             deleteButton.title = 'Delete pin';
             deleteButton.onclick = () => deleteMessage(index);
-            
+
             actionsDiv.appendChild(jumpButton);
             actionsDiv.appendChild(deleteButton);
             messageDiv.appendChild(textSpan);
@@ -194,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pinnedMessagesContainer.appendChild(messageDiv);
         });
     }
-    
+
     function jumpToMessage(bookmark) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0] && tabs[0].id) {
@@ -203,11 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     bookmark: bookmark
                 }, (response) => {
                     console.log('Jump response:', response || 'No response');
-                    
+
                     if (window.pinnerToast) {
                         window.pinnerToast.info('Jumping to message...');
                     }
-                    
+
                     window.close(); // Close popup after jumping
                 });
             } else {
@@ -219,24 +233,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     function deleteMessage(index) {
         chrome.storage.sync.get(['pinnedMessages'], (data) => {
             const messages = data.pinnedMessages || [];
             if (index >= 0 && index < messages.length) {
                 messages.splice(index, 1);
-                
+
                 chrome.storage.sync.set({ pinnedMessages: messages }, () => {
                     displayPinnedMessages(messages);
-                    
+
                     if (window.pinnerToast) {
                         window.pinnerToast.success('Pin deleted successfully');
                     }
-                    
+
                     // Notify content script to refresh pins
                     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                         if (tabs[0] && tabs[0].id) {
-                            chrome.tabs.sendMessage(tabs[0].id, { 
+                            chrome.tabs.sendMessage(tabs[0].id, {
                                 type: 'REFRESH_PINS'
                             });
                         }
@@ -245,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     // Refresh the pinned messages every time the popup is opened
     loadPinnedMessages();
 });
