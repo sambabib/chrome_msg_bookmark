@@ -281,8 +281,8 @@ function pinSelectedText(selection) {
             const maxPins = data.maxPins || 50;
 
             // Check for duplicates
-            const isDuplicate = messages.some(msg => 
-                msg.text === bookmark.text && 
+            const isDuplicate = messages.some(msg =>
+                msg.text === bookmark.text &&
                 msg.url === bookmark.url
             );
 
@@ -304,9 +304,15 @@ function pinSelectedText(selection) {
                 } else {
                     console.log('Message pinned successfully. Total pins:', messages.length);
                     showConfirmation('Message pinned successfully!');
-                    
+
                     // Add visual indicator to the pinned message
                     addPinIndicator(messageContainer || element, bookmark);
+
+                    // Notify popup to update its display
+                    chrome.runtime.sendMessage({
+                        type: 'PIN_ADDED',
+                        bookmark: bookmark
+                    });
                 }
             });
         } catch (e) {
@@ -345,13 +351,13 @@ function addPinIndicator(element, bookmark) {
     if (element.querySelector('.message-pin-indicator')) {
         return; // Already has a pin indicator
     }
-    
+
     const pinIndicator = document.createElement('div');
     pinIndicator.className = 'message-pin-indicator';
     pinIndicator.innerHTML = '📌';
     pinIndicator.title = 'This message is pinned. Click to view in popup.';
     pinIndicator.setAttribute('data-pin-id', bookmark.timestamp);
-    
+
     pinIndicator.style.cssText = `
         position: absolute;
         top: 0;
@@ -371,59 +377,59 @@ function addPinIndicator(element, bookmark) {
         margin: 8px;
         transition: transform 0.2s;
     `;
-    
-    pinIndicator.addEventListener('mouseover', function() {
+
+    pinIndicator.addEventListener('mouseover', function () {
         this.style.transform = 'scale(1.1)';
     });
-    
-    pinIndicator.addEventListener('mouseout', function() {
+
+    pinIndicator.addEventListener('mouseout', function () {
         this.style.transform = 'scale(1)';
     });
-    
-    pinIndicator.addEventListener('click', function() {
+
+    pinIndicator.addEventListener('click', function () {
         chrome.runtime.sendMessage({ action: "openPopup" });
     });
-    
+
     // Make sure the element has position relative for absolute positioning of the indicator
     const computedStyle = window.getComputedStyle(element);
     if (computedStyle.position === 'static') {
         element.style.position = 'relative';
     }
-    
+
     element.appendChild(pinIndicator);
 }
 
 // Load existing pins and mark them on the page
 function loadAndMarkExistingPins() {
     if (!enabled) return;
-    
-    chrome.storage.sync.get(['pinnedMessages'], function(data) {
+
+    chrome.storage.sync.get(['pinnedMessages'], function (data) {
         const messages = data.pinnedMessages || [];
         const currentUrl = window.location.href;
-        
+
         // Filter pins for the current page
         const pagePins = messages.filter(pin => {
             // Match on domain and path, ignore query params
             const pinUrlObj = new URL(pin.url);
             const currentUrlObj = new URL(currentUrl);
-            return pinUrlObj.hostname === currentUrlObj.hostname && 
-                   pinUrlObj.pathname === currentUrlObj.pathname;
+            return pinUrlObj.hostname === currentUrlObj.hostname &&
+                pinUrlObj.pathname === currentUrlObj.pathname;
         });
-        
+
         console.log(`Found ${pagePins.length} pins for this page`);
-        
+
         // Try to find and mark each pinned message
         pagePins.forEach(pin => {
             setTimeout(() => {
                 try {
                     // Try to find the element using various methods
                     let element = null;
-                    
+
                     // Try XPath
                     if (pin.xpath) {
                         try {
                             const result = document.evaluate(
-                                pin.xpath, document, null, 
+                                pin.xpath, document, null,
                                 XPathResult.FIRST_ORDERED_NODE_TYPE, null
                             );
                             if (result.singleNodeValue) {
@@ -433,7 +439,7 @@ function loadAndMarkExistingPins() {
                             console.warn('XPath lookup failed:', e);
                         }
                     }
-                    
+
                     // Try CSS selector
                     if (!element && pin.selector) {
                         try {
@@ -442,7 +448,7 @@ function loadAndMarkExistingPins() {
                             console.warn('CSS selector lookup failed:', e);
                         }
                     }
-                    
+
                     // If we found the element, mark it
                     if (element) {
                         addPinIndicator(element, pin);
@@ -575,8 +581,8 @@ function generateSelector(element) {
             // Add Grok-specific selector
             const messageElement = element.closest('.message-content') || element.closest('.message');
             if (messageElement) {
-                return (messageElement.classList.contains('message-content') ? '.message-content' : '.message') + 
-                       ':contains(' + element.textContent.substring(0, 30).replace(/[^\w\s]/g, '') + ')';
+                return (messageElement.classList.contains('message-content') ? '.message-content' : '.message') +
+                    ':contains(' + element.textContent.substring(0, 30).replace(/[^\w\s]/g, '') + ')';
             }
         }
 
@@ -600,7 +606,7 @@ function showConfirmation(message, isError = false) {
         // Fallback to the original confirmation UI
         const confirmation = document.createElement('div');
         const styles = document.createElement('style');
-        
+
         styles.textContent = `
             .pinner-confirmation {
                 position: fixed;
@@ -623,19 +629,19 @@ function showConfirmation(message, isError = false) {
                 100% { opacity: 0; transform: translateY(-20px); }
             }
         `;
-        
+
         document.head.appendChild(styles);
         confirmation.textContent = message;
-        
+
         // Remove any existing confirmation
         const existingConfirmation = document.querySelector('.pinner-confirmation');
         if (existingConfirmation) {
             existingConfirmation.remove();
         }
-        
+
         confirmation.className = 'pinner-confirmation';
         document.body.appendChild(confirmation);
-        
+
         // Remove the elements after animation completes
         setTimeout(() => {
             confirmation.remove();
@@ -680,7 +686,7 @@ function jumpToMessage(bookmark) {
             // Try to find elements that match the selector
             const elements = document.querySelectorAll(bookmark.selector);
             console.log(`Found ${elements.length} elements matching selector:`, bookmark.selector);
-            
+
             // If multiple elements match, try to find the one containing our text
             if (elements.length > 1 && bookmark.text) {
                 for (const el of elements) {
@@ -702,7 +708,7 @@ function jumpToMessage(bookmark) {
     if (!element) {
         try {
             let platformSelectors = [];
-            
+
             if (platform === 'chatgpt' || bookmark.platform === 'chatgpt') {
                 platformSelectors = ['.markdown', '.text-message', '.message-content'];
             } else if (platform === 'claude' || bookmark.platform === 'claude') {
@@ -710,7 +716,7 @@ function jumpToMessage(bookmark) {
             } else if (platform === 'grok' || bookmark.platform === 'grok') {
                 platformSelectors = ['.message-content', '.message', '.grok-message'];
             }
-            
+
             for (const selector of platformSelectors) {
                 const elements = document.querySelectorAll(selector);
                 for (const el of elements) {
@@ -768,7 +774,7 @@ function jumpToMessage(bookmark) {
         setTimeout(() => {
             element.style.backgroundColor = originalBackground;
         }, 2000);
-        
+
         return true;
     } else {
         console.error('Could not find the pinned message');
