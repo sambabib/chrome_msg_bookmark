@@ -1,0 +1,76 @@
+#chat-bookmark-btn {
+  position: absolute;
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+#chat-bookmark-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+#chat-bookmark-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.chat-bookmark-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #059669;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideInRight 0.3s ease, fadeOut 0.3s ease 1.7s forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Highlight animation for found bookmarks */
+.bookmark-highlight {
+  background: #fef3c7 !important;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  animation: highlightPulse 2s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0%, 100% { background: #fef3c7; }
+  50% { background: #fcd34d; }
+}
