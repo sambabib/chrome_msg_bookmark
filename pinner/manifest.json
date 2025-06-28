@@ -1,37 +1,38 @@
 {
-    "manifest_version": 3,
-    "name": "Chat Message Pinner",
-    "version": "1.2",
-    "description": "Pin and easily navigate to important messages in ChatGPT, Claude, and Grok chat threads.",
-    "author": "Sambabib",
-    "permissions": [
-        "storage",
-        "alarms"
-    ],
-    "host_permissions": [
-        "https://chat.openai.com/*",
-        "https://chatgpt.com/*",
+  "manifest_version": 3,
+  "name": "AI Chat Bookmarks",
+  "version": "1.0",
+  "description": "Bookmark and navigate to specific points in Claude and ChatGPT conversations",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://claude.ai/*",
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
         "https://claude.ai/*",
-        "https://grok.x.ai/*"
-    ],
-    "background": {
-        "service_worker": "background.js"
-    },
-    "content_scripts": [
-        {
-            "matches": [
-                "https://chat.openai.com/*",
-                "https://chatgpt.com/*",
-                "https://claude.ai/*",
-                "https://grok.x.ai/*"
-            ],
-            "js": [
-                "toast.js",
-                "content.js"
-            ]
-        }
-    ],
-    "action": {
-        "default_popup": "popup.html"
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"]
     }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI Chat Bookmarks"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }
