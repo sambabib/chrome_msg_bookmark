@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AI Chat Bookmarks",
   "version": "1.0",
-  "description": "Bookmark and navigate to specific points in Claude and ChatGPT conversations",
+  "description": "Bookmark and navigate to specific messages in Claude and ChatGPT conversations",
   "permissions": [
     "activeTab",
     "storage"
