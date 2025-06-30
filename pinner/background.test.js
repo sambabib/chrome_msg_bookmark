@@ -3,11 +3,17 @@
  */
 
 // Mock background.js functionality instead of requiring the actual file
-const createContextMenu = () => {
-  chrome.contextMenus.create({
-    id: 'bookmarkSelection',
-    title: 'Bookmark selected text',
-    contexts: ['selection']
+const createContextMenu = async () => {
+  await chrome.contextMenus.removeAll();
+  await chrome.contextMenus.create({
+    id: 'bookmark-selection',
+    title: 'Bookmark this text',
+    contexts: ['selection'],
+    documentUrlPatterns: [
+      'https://claude.ai/*',
+      'https://chat.openai.com/*',
+      'https://chatgpt.com/*'
+    ]
   });
 };
 
@@ -49,9 +55,12 @@ const initBackgroundScript = () => {
   chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
   
   // Initialize storage on install
-  chrome.runtime.onInstalled.addListener(({ reason }) => {
+  chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'install') {
-      chrome.storage.local.set({ bookmarks: [] });
+      const result = await chrome.storage.local.get(['bookmarks']);
+      if (!result.bookmarks) {
+        await chrome.storage.local.set({ bookmarks: [] });
+      }
       createContextMenu();
     }
   });
@@ -66,23 +75,27 @@ describe('Background Script', () => {
       },
       onInstalled: {
         addListener: jest.fn()
+      },
+      onStartup: {
+        addListener: jest.fn()
       }
     },
     storage: {
       local: {
-        get: jest.fn(),
-        set: jest.fn()
+        get: jest.fn().mockResolvedValue({}),
+        set: jest.fn().mockResolvedValue()
       }
     },
     contextMenus: {
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue(),
+      removeAll: jest.fn().mockResolvedValue(),
       onClicked: {
         addListener: jest.fn()
       }
     },
     tabs: {
-      query: jest.fn(),
-      sendMessage: jest.fn()
+      query: jest.fn().mockResolvedValue([]),
+      sendMessage: jest.fn().mockResolvedValue()
     }
   };
 
@@ -97,7 +110,11 @@ describe('Background Script', () => {
   });
 
   describe('onInstalled listener', () => {
-    it('should initialize storage and create context menu on install', () => {
+    it('should initialize storage and create context menu on install', async () => {
+      // Mock storage.get to return no bookmarks
+      chrome.storage.local.get.mockResolvedValue({ bookmarks: null });
+      chrome.contextMenus.removeAll.mockResolvedValue();
+      
       // Initialize our mock background script
       initBackgroundScript();
       
@@ -105,17 +122,50 @@ describe('Background Script', () => {
       const onInstalledCallback = chrome.runtime.onInstalled.addListener.mock.calls[0][0];
       
       // Call the callback
-      onInstalledCallback({ reason: 'install' });
+      await onInstalledCallback({ reason: 'install' });
       
       // Check if storage was initialized
       expect(chrome.storage.local.set).toHaveBeenCalledWith({ bookmarks: [] });
       
-      // Check if context menu was created
+      // Check if context menu was created after removeAll
+      expect(chrome.contextMenus.removeAll).toHaveBeenCalled();
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
-        id: 'bookmarkSelection',
-        title: 'Bookmark selected text',
-        contexts: ['selection']
+        id: 'bookmark-selection',
+        title: 'Bookmark this text',
+        contexts: ['selection'],
+        documentUrlPatterns: [
+          'https://claude.ai/*',
+          'https://chat.openai.com/*',
+          'https://chatgpt.com/*'
+        ]
       });
+    });
+    
+    it('should not initialize storage if bookmarks already exist', async () => {
+      // Mock storage.get to return existing bookmarks
+      chrome.storage.local.get.mockResolvedValue({ bookmarks: [] });
+      chrome.contextMenus.removeAll.mockResolvedValue();
+      
+      // Initialize our mock background script
+      initBackgroundScript();
+      
+      // Reset mocks for this test
+      chrome.storage.local.set.mockClear();
+      chrome.contextMenus.create.mockClear();
+      chrome.contextMenus.removeAll.mockClear();
+      
+      // Get the onInstalled callback
+      const onInstalledCallback = chrome.runtime.onInstalled.addListener.mock.calls[0][0];
+      
+      // Call the callback
+      await onInstalledCallback({ reason: 'install' });
+      
+      // Check storage was not initialized again
+      expect(chrome.storage.local.set).not.toHaveBeenCalled();
+      
+      // Check context menu was still created
+      expect(chrome.contextMenus.removeAll).toHaveBeenCalled();
+      expect(chrome.contextMenus.create).toHaveBeenCalled();
     });
   });
 
