@@ -5,7 +5,9 @@
   "description": "Bookmark and navigate to specific messages in Claude and ChatGPT conversations",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "tabs",
+    "contextMenus"
   ],
   "host_permissions": [
     "https://claude.ai/*",
@@ -29,10 +31,5 @@
   "action": {
     "default_popup": "popup.html",
     "default_title": "AI Chat Bookmarks"
-  },
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
   }
 }
