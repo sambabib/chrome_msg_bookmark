@@ -7,8 +7,21 @@ class ChatBookmarks {
   
     detectPlatform() {
       const hostname = window.location.hostname;
-      if (hostname.includes('claude.ai')) return 'claude';
-      if (hostname.includes('openai.com') || hostname.includes('chatgpt.com')) return 'chatgpt';
+      const url = window.location.href;
+      
+      console.log('Detecting platform from URL:', url);
+      
+      if (hostname.includes('claude.ai')) {
+        console.log('Platform detected: Claude');
+        return 'claude';
+      }
+      
+      if (hostname.includes('openai.com') || hostname.includes('chatgpt.com')) {
+        console.log('Platform detected: ChatGPT');
+        return 'chatgpt';
+      }
+      
+      console.log('Platform not detected');
       return null;
     }
   
@@ -73,9 +86,7 @@ class ChatBookmarks {
           }
           
           // ChatGPT selectors
-          if (current.matches('[data-message-author-role]') ||
-              current.matches('.group\\/conversation-turn') ||
-              current.closest('[data-message-author-role]')) {
+          if (current.matches('[data-message-author-role]')) {
             return this.generateMessageId(current);
           }
         }
@@ -95,7 +106,7 @@ class ChatBookmarks {
       if (this.platform === 'claude') {
         return document.querySelectorAll('[data-testid*="conversation-turn"], .font-claude-message');
       } else if (this.platform === 'chatgpt') {
-        return document.querySelectorAll('[data-message-author-role], .group\\/conversation-turn');
+        return document.querySelectorAll('[data-message-author-role]');
       }
       return [];
     }
@@ -104,7 +115,7 @@ class ChatBookmarks {
       if (this.platform === 'claude') {
         return '[data-testid*="conversation-turn"], .font-claude-message';
       } else if (this.platform === 'chatgpt') {
-        return '[data-message-author-role], .group\\/conversation-turn';
+        return '[data-message-author-role]';
       }
       return '';
     }
@@ -185,10 +196,13 @@ class ChatBookmarks {
     }
   
     scrollToBookmark(bookmark) {
+      console.log(`Attempting to find text in ${this.platform}:`, bookmark.text.substring(0, 50) + '...');
+      
       // First try to find the exact text
       const found = this.findTextInPage(bookmark.fullText);
       
       if (found) {
+        console.log('Found exact text match:', found);
         found.scrollIntoView({ 
           behavior: 'smooth', 
           block: 'center',
@@ -196,9 +210,11 @@ class ChatBookmarks {
         });
         this.highlightText(found);
       } else {
+        console.log('No exact match, trying partial text...');
         // Fallback: try to find partial text or similar content
         const partialFound = this.findTextInPage(bookmark.text);
         if (partialFound) {
+          console.log('Found partial text match:', partialFound);
           partialFound.scrollIntoView({ 
             behavior: 'smooth', 
             block: 'center',
@@ -206,26 +222,43 @@ class ChatBookmarks {
           });
           this.highlightText(partialFound);
         } else {
+          console.log('No text match found at all');
           this.showNotification('Bookmark location not found. The conversation may have changed.');
         }
       }
     }
-  
+    
     findTextInPage(searchText) {
+      if (!searchText || searchText.length < 3) {
+        console.log('Search text too short or empty');
+        return null;
+      }
+      
+      console.log(`Finding text in ${this.platform} using ${searchText.length} chars of text`);
+      
+      // Platform-specific search optimizations
+      if (this.platform === 'chatgpt') {
+        console.log('Using ChatGPT-specific text finder');
+        return this.findTextInChatGPT(searchText);
+      }
+      
+      console.log('Using default text finder (Claude)');
+      
+      // Default search method (works well for Claude)
       const walker = document.createTreeWalker(
         document.body,
         NodeFilter.SHOW_TEXT,
         null,
         false
       );
-  
+
       let node;
       while (node = walker.nextNode()) {
         if (node.textContent.includes(searchText)) {
           return node.parentElement;
         }
       }
-  
+
       // Try fuzzy matching for partial text
       const words = searchText.split(' ').filter(w => w.length > 3);
       if (words.length > 0) {
@@ -235,10 +268,10 @@ class ChatBookmarks {
           null,
           false
         );
-  
+
         let bestMatch = null;
         let bestScore = 0;
-  
+
         while (node = walker2.nextNode()) {
           const content = node.textContent;
           let score = 0;
@@ -251,14 +284,102 @@ class ChatBookmarks {
             bestMatch = node.parentElement;
           }
         }
-  
+
         return bestMatch;
       }
-  
+
       return null;
     }
-  
+    
+    findTextInChatGPT(searchText) {
+      // First try to find in message containers directly
+      const messageContainers = document.querySelectorAll('[data-message-author-role]');
+      console.log(`Found ${messageContainers.length} ChatGPT message containers to search in`);
+      
+      // Normalize the search text to improve matching
+      const normalizedSearch = searchText.toLowerCase().replace(/\s+/g, ' ').trim();
+      console.log('Normalized search text:', normalizedSearch.substring(0, 50) + '...');
+      
+      // First pass: try exact matches in message containers
+      for (const container of messageContainers) {
+        const containerText = container.textContent.toLowerCase();
+        if (containerText.includes(normalizedSearch)) {
+          // Find the specific paragraph or element containing the text
+          const paragraphs = container.querySelectorAll('p, div, span');
+          for (const p of paragraphs) {
+            if (p.textContent.toLowerCase().includes(normalizedSearch)) {
+              return p;
+            }
+          }
+          return container; // If no specific element found, return the container
+        }
+      }
+      
+      // Second pass: try fuzzy matching with individual words
+      const words = normalizedSearch.split(' ').filter(w => w.length > 3);
+      if (words.length > 0) {
+        let bestMatch = null;
+        let bestScore = 0;
+        
+        for (const container of messageContainers) {
+          const containerText = container.textContent.toLowerCase();
+          let score = 0;
+          
+          words.forEach(word => {
+            if (containerText.includes(word)) score++;
+          });
+          
+          if (score > bestScore && score > words.length * 0.4) { // Lower threshold for ChatGPT
+            bestScore = score;
+            bestMatch = container;
+          }
+        }
+        
+        if (bestMatch) {
+          return bestMatch;
+        }
+      }
+      
+      // Last resort: fallback to the default method
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+
+      let node;
+      let bestMatch = null;
+      let bestScore = 0;
+      
+      while (node = walker.nextNode()) {
+        const content = node.textContent.toLowerCase();
+        
+        // Try exact match first
+        if (content.includes(normalizedSearch)) {
+          return node.parentElement;
+        }
+        
+        // Then try word matching
+        if (words.length > 0) {
+          let score = 0;
+          words.forEach(word => {
+            if (content.includes(word)) score++;
+          });
+          
+          if (score > bestScore && score > words.length * 0.3) { // Even lower threshold for last resort
+            bestScore = score;
+            bestMatch = node.parentElement;
+          }
+        }
+      }
+      
+      return bestMatch;
+    }
+    
     highlightText(element) {
+      if (!element) return;
+      
       element.style.backgroundColor = '#ffeb3b';
       element.style.transition = 'background-color 0.3s ease';
       
