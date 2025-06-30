@@ -154,8 +154,33 @@ class ChatBookmarks {
       chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action === 'scrollToBookmark') {
           this.scrollToBookmark(request.bookmark);
-          sendResponse({ success: true });
+          // The popup may have been closed, so sending a response can fail.
+          // We'll send it and ignore any errors.
+          try {
+            sendResponse({ success: true });
+          } catch (error) {
+            // This is expected if the popup closed, so we can ignore it.
+            if (!error.message.includes('context invalidated')) {
+              console.error('Error sending response for scrollToBookmark:', error);
+            }
+          }
+          // We've handled this message and responded. Return false or nothing.
+          return;
         }
+
+        if (request.action === 'bookmarkSelection') {
+          // This message comes from the context menu in the background script.
+          // The current bookmarkSelection() method relies on an existing DOM selection,
+          // which we don't have here. This needs a refactor to work correctly.
+          this.showNotification('Bookmarking from context menu is not fully supported yet.');
+          sendResponse({ success: false, error: 'Not implemented' });
+          return;
+        }
+
+        // IMPORTANT: For any other messages, we do not return `true`.
+        // This signals that this listener will not send a response for this message,
+        // allowing other listeners (like in background.js) to do so asynchronously
+        // without causing a "message port closed" error.
       });
     }
   
