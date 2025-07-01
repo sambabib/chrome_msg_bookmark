@@ -48,12 +48,20 @@ class ChatBookmarks {
     }
   
     createBookmarkButton() {
-      this.bookmarkButton = document.createElement('div');
-      this.bookmarkButton.id = 'chat-bookmark-btn';
-      this.bookmarkButton.innerHTML = '📌 Bookmark';
-      this.bookmarkButton.style.display = 'none';
-      this.bookmarkButton.addEventListener('click', () => this.bookmarkSelection());
-      document.body.appendChild(this.bookmarkButton);
+      // Create button if it doesn't exist
+      if (!this.bookmarkButton) {
+        this.bookmarkButton = document.createElement('button');
+        this.bookmarkButton.id = 'chat-bookmark-btn';
+        this.bookmarkButton.innerHTML = '⚡ Bookmark this';
+        this.bookmarkButton.style.display = 'none';
+        document.body.appendChild(this.bookmarkButton);
+        
+        // Add click event
+        this.bookmarkButton.addEventListener('click', () => {
+          this.bookmarkSelection();
+          this.bookmarkButton.style.display = 'none';
+        });
+      }
     }
   
     setupSelectionListener() {

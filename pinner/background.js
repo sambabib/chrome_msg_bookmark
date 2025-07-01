@@ -26,7 +26,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.error('Error getting bookmarks:', error);
         sendResponse({ bookmarks: [], error: error.message });
       });
-    return true; // Keep message channel open for async response
+    return true;
   }
   
   if (request.action === 'saveBookmark') {
@@ -77,6 +77,3 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
   }
 });
-
-// Service workers don't need onStartup since they're event-based
-// and will be initialized when needed

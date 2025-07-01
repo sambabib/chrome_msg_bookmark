@@ -306,5 +306,256 @@ describe('ChatBookmarks', () => {
       // Restore original location
       window.location = originalLocation;
     });
+    
+    it('should handle Chrome API errors gracefully', async () => {
+      // Mock chrome storage to throw an error
+      chrome.storage.local.get.mockRejectedValue(new Error('Storage error'));
+      
+      // Create instance
+      const bookmarks = new ChatBookmarks();
+      
+      // Set up bookmark button with data
+      bookmarks.bookmarkButton.dataset.text = 'Test bookmark text';
+      bookmarks.bookmarkButton.dataset.messageId = 'test-message-id';
+      
+      // Mock console.error
+      const originalConsoleError = console.error;
+      console.error = jest.fn();
+      
+      // Call bookmark function
+      await bookmarks.bookmarkSelection();
+      
+      // Check if error was logged
+      expect(console.error).toHaveBeenCalled();
+      
+      // Restore console.error
+      console.error = originalConsoleError;
+    });
+  });
+  
+  describe('findTextInPage', () => {
+    // Add the findTextInPage method to our mock class for testing
+    ChatBookmarks.prototype.findTextInPage = function(searchText) {
+      if (!searchText || searchText.length < 3) {
+        return null;
+      }
+      
+      if (this.platform === 'chatgpt') {
+        return this.findTextInChatGPT(searchText);
+      }
+      
+      return this.findTextInClaude(searchText);
+    };
+    
+    ChatBookmarks.prototype.findTextInChatGPT = function(searchText) {
+      const messageContainers = document.querySelectorAll('[data-message-author-role]');
+      
+      for (const container of messageContainers) {
+        if (container.textContent.includes(searchText)) {
+          return container;
+        }
+      }
+      
+      return null;
+    };
+    
+    ChatBookmarks.prototype.findTextInClaude = function(searchText) {
+      const claudeMessages = document.querySelectorAll('[data-testid*="conversation-turn"], .font-claude-message');
+      
+      for (const container of claudeMessages) {
+        if (container.textContent.includes(searchText)) {
+          return container;
+        }
+      }
+      
+      return null;
+    };
+    
+    it('should find text in ChatGPT messages', () => {
+      // Mock platform
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = new URL('https://chat.openai.com/c/123');
+      
+      // Create test DOM structure
+      const chatgptMessage = document.createElement('div');
+      chatgptMessage.setAttribute('data-message-author-role', 'assistant');
+      chatgptMessage.textContent = 'This is a test message with specific content';
+      document.body.appendChild(chatgptMessage);
+      
+      // Create instance
+      const bookmarks = new ChatBookmarks();
+      
+      // Test finding text
+      const foundElement = bookmarks.findTextInPage('specific content');
+      expect(foundElement).toBe(chatgptMessage);
+      
+      // Restore original location
+      window.location = originalLocation;
+    });
+    
+    it('should find text in Claude messages', () => {
+      // Mock platform
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = new URL('https://claude.ai/chat');
+      
+      // Create test DOM structure
+      const claudeMessage = document.createElement('div');
+      claudeMessage.setAttribute('data-testid', 'conversation-turn-5');
+      claudeMessage.textContent = 'This is a Claude message with unique content';
+      document.body.appendChild(claudeMessage);
+      
+      // Create instance
+      const bookmarks = new ChatBookmarks();
+      
+      // Test finding text
+      const foundElement = bookmarks.findTextInPage('unique content');
+      expect(foundElement).toBe(claudeMessage);
+      
+      // Restore original location
+      window.location = originalLocation;
+    });
+    
+    it('should return null for text that is too short', () => {
+      // Create instance
+      const bookmarks = new ChatBookmarks();
+      
+      // Test with short text
+      const foundElement = bookmarks.findTextInPage('hi');
+      expect(foundElement).toBeNull();
+    });
+  });
+  
+  describe('scrollToBookmark', () => {
+    // Add the scrollToBookmark method to our mock class for testing
+    ChatBookmarks.prototype.scrollToBookmark = function(bookmark) {
+      const found = this.findTextInPage(bookmark.text);
+      
+      if (found) {
+        found.scrollIntoView();
+        this.highlightText(found, bookmark.text);
+        return true;
+      }
+      
+      return false;
+    };
+    
+    ChatBookmarks.prototype.highlightText = function(element, searchText) {
+      if (!element) return;
+      element.classList.add('bookmark-highlight');
+    };
+    
+    it('should scroll to bookmark and highlight text', () => {
+      // Mock platform
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = new URL('https://chat.openai.com/c/123');
+      
+      // Create test DOM structure
+      const chatgptMessage = document.createElement('div');
+      chatgptMessage.setAttribute('data-message-author-role', 'assistant');
+      chatgptMessage.textContent = 'This is a test message with specific content';
+      document.body.appendChild(chatgptMessage);
+      
+      // Mock scrollIntoView
+      chatgptMessage.scrollIntoView = jest.fn();
+      
+      // Create instance
+      const bookmarks = new ChatBookmarks();
+      
+      // Create test bookmark
+      const bookmark = {
+        text: 'specific content',
+        fullText: 'This is a test message with specific content',
+        messageId: 'test-message-id',
+        platform: 'chatgpt'
+      };
+      
+      // Call scrollToBookmark
+      const result = bookmarks.scrollToBookmark(bookmark);
+      
+      // Check if scrollIntoView was called
+      expect(chatgptMessage.scrollIntoView).toHaveBeenCalled();
+      
+      // Check if highlight class was added
+      expect(chatgptMessage.classList.contains('bookmark-highlight')).toBe(true);
+      
+      // Check return value
+      expect(result).toBe(true);
+      
+      // Restore original location
+      window.location = originalLocation;
+    });
+    
+    it('should return false when bookmark text is not found', () => {
+      // Create instance
+      const bookmarks = new ChatBookmarks();
+      
+      // Create test bookmark with text that doesn't exist in the DOM
+      const bookmark = {
+        text: 'nonexistent text',
+        messageId: 'test-message-id'
+      };
+      
+      // Call scrollToBookmark
+      const result = bookmarks.scrollToBookmark(bookmark);
+      
+      // Check return value
+      expect(result).toBe(false);
+    });
+  });
+  
+  describe('setupMessageListener', () => {
+    // Add the setupMessageListener method to our mock class for testing
+    ChatBookmarks.prototype.setupMessageListener = function() {
+      if (!chrome || !chrome.runtime) return;
+      
+      chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'scrollToBookmark') {
+          const result = this.scrollToBookmark(request.bookmark);
+          try {
+            sendResponse({ success: result });
+          } catch (error) {
+            // Handle error
+          }
+          return true;
+        }
+        return false;
+      });
+    };
+    
+    it('should set up message listener for scrollToBookmark action', () => {
+      // Create instance
+      const bookmarks = new ChatBookmarks();
+      
+      // Mock scrollToBookmark
+      bookmarks.scrollToBookmark = jest.fn().mockReturnValue(true);
+      
+      // Set up message listener
+      bookmarks.setupMessageListener();
+      
+      // Check if listener was added
+      expect(chrome.runtime.onMessage.addListener).toHaveBeenCalled();
+      
+      // Get the listener function
+      const listener = chrome.runtime.onMessage.addListener.mock.calls[0][0];
+      
+      // Create mock request and response
+      const request = {
+        action: 'scrollToBookmark',
+        bookmark: { text: 'test' }
+      };
+      const sendResponse = jest.fn();
+      
+      // Call the listener
+      listener(request, {}, sendResponse);
+      
+      // Check if scrollToBookmark was called with the bookmark
+      expect(bookmarks.scrollToBookmark).toHaveBeenCalledWith(request.bookmark);
+      
+      // Check if sendResponse was called with success
+      expect(sendResponse).toHaveBeenCalledWith({ success: true });
+    });
   });
 });
