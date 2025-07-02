@@ -83,7 +83,7 @@ class ChatBookmarks {
         const rect = range.getBoundingClientRect();
         
         this.bookmarkButton.style.display = 'block';
-        this.bookmarkButton.style.left = `${rect.right + 10}px`;
+        this.bookmarkButton.style.left = `${rect.right + 6}px`;
         this.bookmarkButton.style.top = `${rect.top + window.scrollY - 30}px`;
         this.bookmarkButton.dataset.text = selectedText;
         this.bookmarkButton.dataset.messageId = this.findMessageId(selection.anchorNode);
