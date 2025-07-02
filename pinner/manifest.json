@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "AI Chat Bookmarks",
+    "name": "Pinner: AI Chat Bookmarks",
     "version": "1.0",
-    "description": "Save and instantly navigate to important moments in your AI conversations. Never lose track of valuable context in Claude and ChatGPT.",
+    "description": "Bookmark and navigate to important points in your AI conversations so you never lose context of the important stuff.",
     "permissions": [
         "activeTab",
         "storage",
