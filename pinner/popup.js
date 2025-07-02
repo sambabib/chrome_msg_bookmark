@@ -47,8 +47,44 @@ class BookmarkPopup {
     }
   
     async refreshBookmarks() {
+      // Show refreshing status
+      const container = document.getElementById('bookmarksContainer');
+      const originalContent = container.innerHTML;
+      
+      // Create status message at the top
+      const statusDiv = document.createElement('div');
+      statusDiv.className = 'refresh-status';
+      statusDiv.textContent = 'Refreshing...';
+      container.insertBefore(statusDiv, container.firstChild);
+      
+      // Disable refresh button
+      const refreshBtn = document.getElementById('refreshBtn');
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = 'Refreshing...';
+      
+      // Load bookmarks
       await this.loadBookmarks();
+      
+      // Update UI
       this.renderBookmarks();
+      
+      // Show success message briefly
+      const successDiv = document.createElement('div');
+      successDiv.className = 'refresh-status success';
+      successDiv.textContent = 'Refreshed!';
+      container.insertBefore(successDiv, container.firstChild);
+      
+      // Reset button
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Refresh';
+      
+      // Remove success message after a delay
+      setTimeout(() => {
+        const statusElement = container.querySelector('.refresh-status.success');
+        if (statusElement) {
+          statusElement.remove();
+        }
+      }, 2000);
     }
   
     async clearAllBookmarks() {
