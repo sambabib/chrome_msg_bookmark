@@ -132,20 +132,21 @@
 <body>
     <nav class="navbar">
         <a href="#" class="navbar-brand">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                style="margin-right: 8px;">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-            </svg>
+            <img src="pinner/icons/icon32.png" alt="Pinner Logo" width="24" height="24" style="margin-right: 8px;">
             Pinner
         </a>
         <div class="navbar-links">
-            <a href="#">Home</a>
-            <a href="#">Privacy Policy</a>
-            <a href="https://chrome.google.com/webstore/detail/[YOUR-EXTENSION-ID]" target="_blank">Chrome Web Store</a>
+            <a href="privacy-policy.html">Privacy Policy</a>
+            <a href="#" id="chrome-store-link">Chrome Web Store</a>
         </div>
     </nav>
+    <script>
+        // We'll update this when we have the Chrome Web Store link
+        document.getElementById('chrome-store-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('The extension will be available in the Chrome Web Store soon!');
+        });
+    </script>
 
     <div class="container">
         <div class="header">
