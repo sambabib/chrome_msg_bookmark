@@ -3,6 +3,7 @@
     "name": "Pinner: AI Chat Bookmarks",
     "version": "1.0",
     "description": "Bookmark and navigate to important points in your AI conversations so you never lose context of the important stuff.",
+    "homepage_url": "https://[YOUR-GITHUB-USERNAME].github.io/chrome_msg_bookmark/",
     "permissions": [
         "activeTab",
         "storage",

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinner - Privacy Policy</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar {
+            background-color: #2563eb;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .navbar-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        .navbar-links a:hover {
+            opacity: 0.8;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .navbar-brand {
+                margin-bottom: 0.5rem;
+            }
+
+            .navbar-links {
+                gap: 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        h1 {
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            color: #1e40af;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        h3 {
+            color: #374151;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p,
+        ul {
+            margin-bottom: 1rem;
+        }
+
+        ul {
+            padding-left: 1.5rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .last-updated {
+            color: #6b7280;
+            font-style: italic;
+            margin-bottom: 2rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1.5rem;
+            background-color: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="#" class="navbar-brand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                style="margin-right: 8px;">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            Pinner
+        </a>
+        <div class="navbar-links">
+            <a href="#">Home</a>
+            <a href="#">Privacy Policy</a>
+            <a href="https://chrome.google.com/webstore/detail/[YOUR-EXTENSION-ID]" target="_blank">Chrome Web Store</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Privacy Policy for Pinner</h1>
+            <p class="last-updated">Last Updated: July 2, 2025</p>
+        </div>
+
+        <h2>Introduction</h2>
+        <p>Pinner ("we," "our," or "this extension") is committed to protecting your privacy. This Privacy Policy
+            explains what information we collect, how we use it, and the choices you have regarding your data when using
+            our browser extension.</p>
+
+        <h2>Information Collection</h2>
+
+        <h3>What We Collect</h3>
+        <p>Pinner collects and stores the following information <strong>locally on your device only</strong>:</p>
+        <ul>
+            <li><strong>Bookmark Content</strong>: Text that you explicitly select and choose to bookmark</li>
+            <li><strong>Timestamp</strong>: When each bookmark was created</li>
+            <li><strong>Platform Information</strong>: Whether the bookmark was created on Claude or ChatGPT</li>
+            <li><strong>Message ID</strong>: A reference to identify which message in a conversation contains the
+                bookmarked text</li>
+        </ul>
+
+        <h3>What We Do NOT Collect</h3>
+        <ul>
+            <li>We do not collect or transmit any personal information</li>
+            <li>We do not track your browsing history</li>
+            <li>We do not access any data from websites other than Claude and ChatGPT</li>
+            <li>We do not use cookies or any other tracking technologies</li>
+            <li>We do not have a backend server that receives your data</li>
+        </ul>
+
+        <h2>How We Use Information</h2>
+        <p>The information collected is used solely to:</p>
+        <ul>
+            <li>Display your bookmarks in the extension popup</li>
+            <li>Navigate to the exact location of bookmarked text when requested</li>
+            <li>Allow you to search and filter your saved bookmarks</li>
+        </ul>
+
+        <h2>Data Storage</h2>
+        <p>All data collected by Pinner is stored exclusively in your browser's local storage using Chrome's
+            <code>storage.local</code> API. This means:</p>
+        <ul>
+            <li>Your data never leaves your device</li>
+            <li>Your data is not accessible to us or any third parties</li>
+            <li>Your data is only accessible to you within your browser</li>
+            <li>Your data is automatically deleted if you uninstall the extension</li>
+        </ul>
+
+        <h2>Permissions</h2>
+        <p>Pinner requires certain permissions to function:</p>
+        <ul>
+            <li><strong>activeTab</strong>: To access the current tab's content for detecting selections and
+                highlighting bookmarks</li>
+            <li><strong>storage</strong>: To save your bookmarks locally on your device</li>
+            <li><strong>contextMenus</strong>: To provide right-click menu options for bookmarking</li>
+            <li><strong>Host Permissions</strong> (for Claude and ChatGPT domains): To inject the necessary scripts that
+                enable bookmarking functionality</li>
+        </ul>
+        <p>These permissions are used solely for providing the core functionality of the extension and not for
+            collecting or transmitting data.</p>
+
+        <h2>Third-Party Access</h2>
+        <p>Pinner does not share any data with third parties. The extension operates entirely locally within your
+            browser.</p>
+
+        <h2>Data Retention</h2>
+        <p>Your bookmarks are retained in your browser's local storage until:</p>
+        <ul>
+            <li>You manually delete them using the extension's interface</li>
+            <li>You clear your browser's extension storage</li>
+            <li>You uninstall the extension</li>
+        </ul>
+
+        <h2>Children's Privacy</h2>
+        <p>Pinner is not directed at individuals under the age of 13. We do not knowingly collect personal information
+            from children under 13.</p>
+
+        <h2>Changes to This Privacy Policy</h2>
+        <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new
+            Privacy Policy in the extension's documentation and updating the "Last Updated" date.</p>
+
+        <h2>Contact Us</h2>
+        <p>If you have any questions about this Privacy Policy, please contact us at [your contact email].</p>
+    </div>
+
+    <div class="footer">
+        <p>By using Pinner, you agree to the collection and use of information in accordance with this policy.</p>
+    </div>
+</body>
+
+</html>

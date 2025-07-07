@@ -83,7 +83,7 @@ class ChatBookmarks {
         const rect = range.getBoundingClientRect();
         
         this.bookmarkButton.style.display = 'block';
-        this.bookmarkButton.style.left = `${rect.right + 6}px`;
+        this.bookmarkButton.style.left = `${rect.right + 4}px`;
         this.bookmarkButton.style.top = `${rect.top + window.scrollY - 30}px`;
         this.bookmarkButton.dataset.text = selectedText;
         this.bookmarkButton.dataset.messageId = this.findMessageId(selection.anchorNode);
@@ -256,37 +256,231 @@ class ChatBookmarks {
     
     // First try to find the exact text using full text if available
     let found = null;
+    let exactTextMatch = null;
+    
     if (bookmark.fullText && bookmark.fullText.length > 0) {
       console.log('Searching using full text');
       found = this.findTextInPage(bookmark.fullText);
+      exactTextMatch = bookmark.fullText;
     }
     
     // If full text search failed, try with the shorter text
     if (!found && bookmark.text) {
       console.log('Full text search failed, trying with shorter text');
       found = this.findTextInPage(bookmark.text);
+      exactTextMatch = bookmark.text;
     }
     
     if (found) {
       console.log('Found text match:', found);
       
-      // First scroll to the element to ensure it's in view
-      found.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center',
-        inline: 'nearest'
-      });
+      // Create a marker element that we'll insert directly at the text location
+      const marker = document.createElement('span');
+      marker.id = 'bookmark-scroll-marker';
+      marker.style.display = 'inline';
+      marker.style.position = 'relative';
       
-      // Wait a moment for the scroll to complete before highlighting
-      setTimeout(() => {
-        this.highlightText(found, bookmark.text || bookmark.fullText);
-      }, 300);
+      // Find the exact text location and insert our marker
+      const textLocation = this.findExactTextLocation(found, exactTextMatch);
       
-      return true;
+      if (textLocation) {
+        // Insert the marker at the exact text position
+        textLocation.range.insertNode(marker);
+        
+        // Scroll to the marker
+        marker.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        // Highlight the text
+        setTimeout(() => {
+          this.highlightExactText(textLocation.node, textLocation.startPos, textLocation.endPos);
+          // Remove the marker after highlighting
+          if (marker.parentNode) {
+            marker.parentNode.removeChild(marker);
+          }
+        }, 300);
+        
+        return true;
+      } else {
+        // Fall back to the old method if we couldn't find the exact text location
+        const preciseElement = this.findPreciseTextElement(found, exactTextMatch);
+        const elementToScroll = preciseElement || found;
+        
+        elementToScroll.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
+        
+        setTimeout(() => {
+          this.highlightText(elementToScroll, exactTextMatch);
+        }, 300);
+        
+        return true;
+      }
     } else {
       console.log('No text match found at all');
       this.showNotification('Bookmark location not found. The conversation may have changed.');
       return false;
+    }
+  }
+  
+  findPreciseTextElement(container, searchText) {
+    if (!container || !searchText) return null;
+    
+    // If the container itself is a text node or has only text content, return it
+    if (container.nodeType === Node.TEXT_NODE || 
+        (container.childNodes.length === 1 && container.childNodes[0].nodeType === Node.TEXT_NODE)) {
+      return container;
+    }
+    
+    // Try to find the most specific element containing the exact text
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    let node;
+    let bestMatch = null;
+    let bestMatchLength = Infinity;
+    
+    // Walk through all text nodes in the container
+    while (node = walker.nextNode()) {
+      const nodeText = node.textContent;
+      
+      if (nodeText.includes(searchText)) {
+        // If we find an exact match, return its parent element
+        if (nodeText.trim() === searchText.trim()) {
+          console.log('Found exact text match in node:', node);
+          return node.parentElement;
+        }
+        
+        // Otherwise keep track of the smallest containing element
+        if (nodeText.length < bestMatchLength) {
+          bestMatch = node.parentElement;
+          bestMatchLength = nodeText.length;
+        }
+      }
+    }
+    
+    // If we found a containing element, return it
+    if (bestMatch) {
+      console.log('Found best match containing text:', bestMatch);
+      return bestMatch;
+    }
+    
+    // Fall back to the original container
+    return container;
+  }
+  
+  findExactTextLocation(container, searchText) {
+    if (!container || !searchText) return null;
+    
+    // Create a tree walker to find all text nodes
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    let textNode;
+    while (textNode = walker.nextNode()) {
+      const nodeText = textNode.textContent;
+      const startPos = nodeText.indexOf(searchText);
+      
+      if (startPos >= 0) {
+        const endPos = startPos + searchText.length;
+        const range = document.createRange();
+        range.setStart(textNode, startPos);
+        range.setEnd(textNode, endPos);
+        
+        console.log('Found exact text position:', { node: textNode, startPos, endPos });
+        return { node: textNode, startPos, endPos, range };
+      }
+    }
+    
+    return null;
+  }
+  
+  highlightExactText(textNode, startPos, endPos) {
+    if (!textNode || startPos < 0 || endPos <= startPos) return;
+    
+    try {
+      // Get the parent element of the text node
+      const parentElement = textNode.parentNode;
+      if (!parentElement) return;
+      
+      // Create a range for the exact text
+      const range = document.createRange();
+      range.setStart(textNode, startPos);
+      range.setEnd(textNode, endPos);
+      
+      // Split the text node into three parts: before, highlight, after
+      const beforeText = textNode.textContent.substring(0, startPos);
+      const highlightText = textNode.textContent.substring(startPos, endPos);
+      const afterText = textNode.textContent.substring(endPos);
+      
+      // Create the new nodes
+      const fragment = document.createDocumentFragment();
+      
+      if (beforeText) {
+        fragment.appendChild(document.createTextNode(beforeText));
+      }
+      
+      // Create the highlight span
+      const highlightSpan = document.createElement('span');
+      highlightSpan.className = 'bookmark-highlight-span';
+      highlightSpan.textContent = highlightText;
+      fragment.appendChild(highlightSpan);
+      
+      if (afterText) {
+        fragment.appendChild(document.createTextNode(afterText));
+      }
+      
+      // Replace the original text node with our fragment
+      parentElement.replaceChild(fragment, textNode);
+      
+      // Create or update the highlight style
+      let highlightStyle = document.getElementById('bookmark-highlight-style');
+      if (!highlightStyle) {
+        highlightStyle = document.createElement('style');
+        highlightStyle.id = 'bookmark-highlight-style';
+        document.head.appendChild(highlightStyle);
+      }
+      
+      highlightStyle.textContent = `
+        .bookmark-highlight-span {
+          background-color: #fef3c7 !important;
+          outline: 2px solid rgba(255, 200, 0, 0.5) !important;
+          border-radius: 2px;
+          animation: highlightPulse 2s ease-in-out;
+        }
+        
+        @keyframes highlightPulse {
+          0%, 100% { background-color: #fef3c7; }
+          50% { background-color: #fcd34d; }
+        }
+      `;
+      
+      // Remove the highlight after a few seconds
+      setTimeout(() => {
+        const highlightSpans = parentElement.querySelectorAll('.bookmark-highlight-span');
+        highlightSpans.forEach(span => {
+          if (span.parentNode) {
+            span.parentNode.replaceChild(document.createTextNode(span.textContent), span);
+          }
+        });
+      }, 5000);
+      
+      console.log('Applied precise text highlighting');
+    } catch (error) {
+      console.error('Error during precise text highlighting:', error);
     }
   }
     
