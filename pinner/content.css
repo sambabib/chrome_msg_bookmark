@@ -1,10 +1,11 @@
+/* Dark mode styles (default) */
 #chat-bookmark-btn {
   position: absolute;
-  background-color: none;
+  background-color: #333333;
   color: #DDDDDD;
   border: 1px solid #333333;
-  padding: 8px 12px;
-  border-radius: 8px; /* Updated to match the image */
+  padding: 6px 12px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
@@ -16,8 +17,7 @@
 }
 
 #chat-bookmark-btn:hover {
-  background-color: #1E1E1E;
-  transform: translateY(-1px);
+  background-color: rgba(40, 40, 40, 0.9);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
